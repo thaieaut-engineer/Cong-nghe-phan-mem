@@ -1,0 +1,816 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainForm</class>
+ <widget class="QWidget" name="MainForm">
+  <property name="windowTitle">
+   <string>Billiards Manager</string>
+  </property>
+  <layout class="QHBoxLayout" name="rootLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="sidebar">
+     <property name="minimumSize">
+      <size>
+       <width>260</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QFrame#sidebar{background:#0f172a;color:#e5e7eb;} QLabel#lblBrand{font-size:18px;font-weight:700;color:#ffffff;} QListWidget{border:none;background:transparent;} QListWidget::item{padding:10px 12px;border-radius:10px;margin:3px 10px;color:#e5e7eb;} QListWidget::item:selected{background:#1e293b;color:#ffffff;} QPushButton#btnLogout{background:#111827;border:1px solid #334155;color:#e5e7eb;border-radius:10px;padding:10px 12px;} QPushButton#btnLogout:hover{background:#0b1220;}</string>
+     </property>
+     <layout class="QVBoxLayout" name="sidebarLayout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>18</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>18</number>
+      </property>
+      <property name="spacing">
+       <number>12</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="lblBrand">
+        <property name="text">
+         <string>🎱 Billiards</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="lblUser">
+        <property name="text">
+         <string>Xin chào</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QListWidget" name="listMenu">
+        <property name="currentRow">
+         <number>0</number>
+        </property>
+        <item>
+         <property name="text">
+          <string>Tổng quan</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Quản lý bàn</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Loại bàn</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Dịch vụ</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Loại dịch vụ</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Phiên chơi</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Nhân viên</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Chức vụ</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Ca làm</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Đặt lịch</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Hoá đơn</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Thống kê</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item>
+       <spacer name="spacerSide">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnLogout">
+        <property name="text">
+         <string>Đăng xuất</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="content">
+     <property name="styleSheet">
+      <string notr="true">QFrame#content{background:#f8fafc;} QLabel{color:#111827;} QFrame#topbar{background:#ffffff;border-bottom:1px solid #e5e7eb;} QStackedWidget{background:transparent;} QFrame.pageCard{background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;} QLabel.pageTitle{font-size:18px;font-weight:700;}</string>
+     </property>
+     <layout class="QVBoxLayout" name="contentLayout">
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <property name="spacing">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QFrame" name="topbar">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>56</height>
+         </size>
+        </property>
+        <layout class="QHBoxLayout" name="topbarLayout">
+         <property name="leftMargin">
+          <number>18</number>
+         </property>
+         <property name="rightMargin">
+          <number>18</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="lblTopTitle">
+           <property name="text">
+            <string>Tổng quan</string>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">font-weight:700;font-size:16px;</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="spacerTop">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QStackedWidget" name="stackedPages">
+        <property name="currentIndex">
+         <number>0</number>
+        </property>
+        <widget class="QWidget" name="pageDashboard">
+         <layout class="QVBoxLayout" name="layoutDash">
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>18</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>18</number>
+          </property>
+          <item>
+           <widget class="QFrame" name="cardDash" native="true">
+            <property name="class">
+             <string notr="true">pageCard</string>
+            </property>
+            <layout class="QVBoxLayout" name="cardDashLayout">
+             <property name="leftMargin">
+              <number>18</number>
+             </property>
+             <property name="topMargin">
+              <number>18</number>
+             </property>
+             <property name="rightMargin">
+              <number>18</number>
+             </property>
+             <property name="bottomMargin">
+              <number>18</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblDashTitle">
+               <property name="text">
+                <string>Tổng quan</string>
+               </property>
+               <property name="class">
+                <string notr="true">pageTitle</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lblDashHint">
+               <property name="text">
+                <string>Chọn menu bên trái để quản lý các chức năng.</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="pageTables">
+         <layout class="QVBoxLayout" name="layoutTables">
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>18</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>18</number>
+          </property>
+          <item>
+           <widget class="QFrame" name="cardTables" native="true">
+            <property name="class">
+             <string notr="true">pageCard</string>
+            </property>
+            <layout class="QVBoxLayout" name="cardTablesLayout">
+             <property name="leftMargin">
+              <number>18</number>
+             </property>
+             <property name="topMargin">
+              <number>18</number>
+             </property>
+             <property name="rightMargin">
+              <number>18</number>
+             </property>
+             <property name="bottomMargin">
+              <number>18</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblTablesTitle">
+               <property name="text">
+                <string>Quản lý bàn</string>
+               </property>
+               <property name="class">
+                <string notr="true">pageTitle</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lblTablesHint">
+               <property name="text">
+                <string>(Sẽ hiển thị danh sách bàn + thao tác thêm/sửa/xóa/bảo trì)</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="pageTableTypes">
+         <layout class="QVBoxLayout" name="layoutTableTypes">
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>18</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>18</number>
+          </property>
+          <item>
+           <widget class="QFrame" name="cardTableTypes" native="true">
+            <property name="class">
+             <string notr="true">pageCard</string>
+            </property>
+            <layout class="QVBoxLayout" name="cardTableTypesLayout">
+             <property name="leftMargin">
+              <number>18</number>
+             </property>
+             <property name="topMargin">
+              <number>18</number>
+             </property>
+             <property name="rightMargin">
+              <number>18</number>
+             </property>
+             <property name="bottomMargin">
+              <number>18</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblTableTypesTitle">
+               <property name="text">
+                <string>Loại bàn</string>
+               </property>
+               <property name="class">
+                <string notr="true">pageTitle</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="pageServices">
+         <layout class="QVBoxLayout" name="layoutServices">
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>18</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>18</number>
+          </property>
+          <item>
+           <widget class="QFrame" name="cardServices" native="true">
+            <property name="class">
+             <string notr="true">pageCard</string>
+            </property>
+            <layout class="QVBoxLayout" name="cardServicesLayout">
+             <property name="leftMargin">
+              <number>18</number>
+             </property>
+             <property name="topMargin">
+              <number>18</number>
+             </property>
+             <property name="rightMargin">
+              <number>18</number>
+             </property>
+             <property name="bottomMargin">
+              <number>18</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblServicesTitle">
+               <property name="text">
+                <string>Dịch vụ</string>
+               </property>
+               <property name="class">
+                <string notr="true">pageTitle</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="pageServiceTypes">
+         <layout class="QVBoxLayout" name="layoutServiceTypes">
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>18</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>18</number>
+          </property>
+          <item>
+           <widget class="QFrame" name="cardServiceTypes" native="true">
+            <property name="class">
+             <string notr="true">pageCard</string>
+            </property>
+            <layout class="QVBoxLayout" name="cardServiceTypesLayout">
+             <property name="leftMargin">
+              <number>18</number>
+             </property>
+             <property name="topMargin">
+              <number>18</number>
+             </property>
+             <property name="rightMargin">
+              <number>18</number>
+             </property>
+             <property name="bottomMargin">
+              <number>18</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblServiceTypesTitle">
+               <property name="text">
+                <string>Loại dịch vụ</string>
+               </property>
+               <property name="class">
+                <string notr="true">pageTitle</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="pageSessions">
+         <layout class="QVBoxLayout" name="layoutSessions">
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>18</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>18</number>
+          </property>
+          <item>
+           <widget class="QFrame" name="cardSessions" native="true">
+            <property name="class">
+             <string notr="true">pageCard</string>
+            </property>
+            <layout class="QVBoxLayout" name="cardSessionsLayout">
+             <property name="leftMargin">
+              <number>18</number>
+             </property>
+             <property name="topMargin">
+              <number>18</number>
+             </property>
+             <property name="rightMargin">
+              <number>18</number>
+             </property>
+             <property name="bottomMargin">
+              <number>18</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblSessionsTitle">
+               <property name="text">
+                <string>Phiên chơi</string>
+               </property>
+               <property name="class">
+                <string notr="true">pageTitle</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="pageEmployees">
+         <layout class="QVBoxLayout" name="layoutEmployees">
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>18</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>18</number>
+          </property>
+          <item>
+           <widget class="QFrame" name="cardEmployees" native="true">
+            <property name="class">
+             <string notr="true">pageCard</string>
+            </property>
+            <layout class="QVBoxLayout" name="cardEmployeesLayout">
+             <property name="leftMargin">
+              <number>18</number>
+             </property>
+             <property name="topMargin">
+              <number>18</number>
+             </property>
+             <property name="rightMargin">
+              <number>18</number>
+             </property>
+             <property name="bottomMargin">
+              <number>18</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblEmployeesTitle">
+               <property name="text">
+                <string>Nhân viên</string>
+               </property>
+               <property name="class">
+                <string notr="true">pageTitle</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="pageRoles">
+         <layout class="QVBoxLayout" name="layoutRoles">
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>18</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>18</number>
+          </property>
+          <item>
+           <widget class="QFrame" name="cardRoles" native="true">
+            <property name="class">
+             <string notr="true">pageCard</string>
+            </property>
+            <layout class="QVBoxLayout" name="cardRolesLayout">
+             <property name="leftMargin">
+              <number>18</number>
+             </property>
+             <property name="topMargin">
+              <number>18</number>
+             </property>
+             <property name="rightMargin">
+              <number>18</number>
+             </property>
+             <property name="bottomMargin">
+              <number>18</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblRolesTitle">
+               <property name="text">
+                <string>Chức vụ</string>
+               </property>
+               <property name="class">
+                <string notr="true">pageTitle</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="pageShifts">
+         <layout class="QVBoxLayout" name="layoutShifts">
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>18</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>18</number>
+          </property>
+          <item>
+           <widget class="QFrame" name="cardShifts" native="true">
+            <property name="class">
+             <string notr="true">pageCard</string>
+            </property>
+            <layout class="QVBoxLayout" name="cardShiftsLayout">
+             <property name="leftMargin">
+              <number>18</number>
+             </property>
+             <property name="topMargin">
+              <number>18</number>
+             </property>
+             <property name="rightMargin">
+              <number>18</number>
+             </property>
+             <property name="bottomMargin">
+              <number>18</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblShiftsTitle">
+               <property name="text">
+                <string>Ca làm</string>
+               </property>
+               <property name="class">
+                <string notr="true">pageTitle</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="pageBookings">
+         <layout class="QVBoxLayout" name="layoutBookings">
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>18</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>18</number>
+          </property>
+          <item>
+           <widget class="QFrame" name="cardBookings" native="true">
+            <property name="class">
+             <string notr="true">pageCard</string>
+            </property>
+            <layout class="QVBoxLayout" name="cardBookingsLayout">
+             <property name="leftMargin">
+              <number>18</number>
+             </property>
+             <property name="topMargin">
+              <number>18</number>
+             </property>
+             <property name="rightMargin">
+              <number>18</number>
+             </property>
+             <property name="bottomMargin">
+              <number>18</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblBookingsTitle">
+               <property name="text">
+                <string>Đặt lịch</string>
+               </property>
+               <property name="class">
+                <string notr="true">pageTitle</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="pageInvoices">
+         <layout class="QVBoxLayout" name="layoutInvoices">
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>18</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>18</number>
+          </property>
+          <item>
+           <widget class="QFrame" name="cardInvoices" native="true">
+            <property name="class">
+             <string notr="true">pageCard</string>
+            </property>
+            <layout class="QVBoxLayout" name="cardInvoicesLayout">
+             <property name="leftMargin">
+              <number>18</number>
+             </property>
+             <property name="topMargin">
+              <number>18</number>
+             </property>
+             <property name="rightMargin">
+              <number>18</number>
+             </property>
+             <property name="bottomMargin">
+              <number>18</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblInvoicesTitle">
+               <property name="text">
+                <string>Hoá đơn</string>
+               </property>
+               <property name="class">
+                <string notr="true">pageTitle</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="pageStats">
+         <layout class="QVBoxLayout" name="layoutStats">
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>18</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>18</number>
+          </property>
+          <item>
+           <widget class="QFrame" name="cardStats" native="true">
+            <property name="class">
+             <string notr="true">pageCard</string>
+            </property>
+            <layout class="QVBoxLayout" name="cardStatsLayout">
+             <property name="leftMargin">
+              <number>18</number>
+             </property>
+             <property name="topMargin">
+              <number>18</number>
+             </property>
+             <property name="rightMargin">
+              <number>18</number>
+             </property>
+             <property name="bottomMargin">
+              <number>18</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblStatsTitle">
+               <property name="text">
+                <string>Thống kê</string>
+               </property>
+               <property name="class">
+                <string notr="true">pageTitle</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
+

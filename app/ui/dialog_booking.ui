@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>BookingDialog</class>
+ <widget class="QDialog" name="BookingDialog">
+  <property name="windowTitle">
+   <string>Đặt lịch</string>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>520</width>
+    <height>360</height>
+   </size>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>18</number>
+   </property>
+   <property name="topMargin">
+    <number>18</number>
+   </property>
+   <property name="rightMargin">
+    <number>18</number>
+   </property>
+   <property name="bottomMargin">
+    <number>18</number>
+   </property>
+   <property name="spacing">
+    <number>12</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="card">
+     <property name="styleSheet">
+      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;} QLineEdit, QComboBox, QDateTimeEdit, QTextEdit{padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;} QLineEdit:focus, QComboBox:focus, QDateTimeEdit:focus, QTextEdit:focus{border:1px solid #2563eb;}</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout">
+      <property name="leftMargin">
+       <number>14</number>
+      </property>
+      <property name="topMargin">
+       <number>14</number>
+      </property>
+      <property name="rightMargin">
+       <number>14</number>
+      </property>
+      <property name="bottomMargin">
+       <number>14</number>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelTable">
+        <property name="text">
+         <string>Bàn</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="comboTable"/>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelCustomer">
+        <property name="text">
+         <string>Khách hàng</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="lineCustomer"/>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="labelPhone">
+        <property name="text">
+         <string>SĐT</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="linePhone"/>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="labelStart">
+        <property name="text">
+         <string>Bắt đầu</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QDateTimeEdit" name="dtStart">
+        <property name="calendarPopup">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="labelEnd">
+        <property name="text">
+         <string>Kết thúc</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QDateTimeEdit" name="dtEnd">
+        <property name="calendarPopup">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="labelNote">
+        <property name="text">
+         <string>Ghi chú</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="QTextEdit" name="textNote"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
+

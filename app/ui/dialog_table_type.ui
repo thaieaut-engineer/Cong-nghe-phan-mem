@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>TableTypeDialog</class>
+ <widget class="QDialog" name="TableTypeDialog">
+  <property name="windowTitle">
+   <string>Loại bàn</string>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>420</width>
+    <height>220</height>
+   </size>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>18</number>
+   </property>
+   <property name="topMargin">
+    <number>18</number>
+   </property>
+   <property name="rightMargin">
+    <number>18</number>
+   </property>
+   <property name="bottomMargin">
+    <number>18</number>
+   </property>
+   <property name="spacing">
+    <number>12</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="card">
+     <property name="styleSheet">
+      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;} QLabel{color:#111827;} QLineEdit, QDoubleSpinBox{padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;} QLineEdit:focus, QDoubleSpinBox:focus{border:1px solid #2563eb;}</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout">
+      <property name="leftMargin">
+       <number>14</number>
+      </property>
+      <property name="topMargin">
+       <number>14</number>
+      </property>
+      <property name="rightMargin">
+       <number>14</number>
+      </property>
+      <property name="bottomMargin">
+       <number>14</number>
+      </property>
+      <property name="horizontalSpacing">
+       <number>12</number>
+      </property>
+      <property name="verticalSpacing">
+       <number>10</number>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelName">
+        <property name="text">
+         <string>Tên loại bàn</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="lineName">
+        <property name="placeholderText">
+         <string>VD: Pool</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelPrice">
+        <property name="text">
+         <string>Giá/giờ</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QDoubleSpinBox" name="spinPricePerHour">
+        <property name="maximum">
+         <double>10000000.000000000000000</double>
+        </property>
+        <property name="suffix">
+         <string> đ</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
+

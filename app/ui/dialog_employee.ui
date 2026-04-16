@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>EmployeeDialog</class>
+ <widget class="QDialog" name="EmployeeDialog">
+  <property name="windowTitle">
+   <string>Nhân viên</string>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>480</width>
+    <height>300</height>
+   </size>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>18</number>
+   </property>
+   <property name="topMargin">
+    <number>18</number>
+   </property>
+   <property name="rightMargin">
+    <number>18</number>
+   </property>
+   <property name="bottomMargin">
+    <number>18</number>
+   </property>
+   <property name="spacing">
+    <number>12</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="card">
+     <property name="styleSheet">
+      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;} QLineEdit, QComboBox, QDoubleSpinBox{padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;} QLineEdit:focus, QComboBox:focus, QDoubleSpinBox:focus{border:1px solid #2563eb;}</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout">
+      <property name="leftMargin">
+       <number>14</number>
+      </property>
+      <property name="topMargin">
+       <number>14</number>
+      </property>
+      <property name="rightMargin">
+       <number>14</number>
+      </property>
+      <property name="bottomMargin">
+       <number>14</number>
+      </property>
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelName">
+        <property name="text">
+         <string>Họ tên</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="lineName"/>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelPhone">
+        <property name="text">
+         <string>SĐT</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QLineEdit" name="linePhone"/>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="labelSalary">
+        <property name="text">
+         <string>Lương</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QDoubleSpinBox" name="spinSalary">
+        <property name="maximum">
+         <double>100000000.000000000000000</double>
+        </property>
+        <property name="suffix">
+         <string> đ</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="labelRole">
+        <property name="text">
+         <string>Chức vụ</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QComboBox" name="comboRole"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
+

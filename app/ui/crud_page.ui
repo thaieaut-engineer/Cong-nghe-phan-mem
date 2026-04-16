@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CrudPage</class>
+ <widget class="QWidget" name="CrudPage">
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <property name="spacing">
+    <number>12</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="card" native="true">
+     <property name="styleSheet">
+      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;} QLabel#lblTitle{font-size:18px;font-weight:700;color:#111827;} QLineEdit{padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;} QLineEdit:focus{border:1px solid #2563eb;} QPushButton{padding:8px 10px;border-radius:10px;border:1px solid #d1d5db;background:#f9fafb;} QPushButton:hover{background:#f3f4f6;} QPushButton#btnAdd{background:#2563eb;border:none;color:white;font-weight:600;} QPushButton#btnAdd:hover{background:#1d4ed8;} QPushButton#btnAdd:pressed{background:#1e40af;} QTableView{border:1px solid #e5e7eb;border-radius:12px;}</string>
+     </property>
+     <layout class="QVBoxLayout" name="cardLayout">
+      <property name="leftMargin">
+       <number>18</number>
+      </property>
+      <property name="topMargin">
+       <number>18</number>
+      </property>
+      <property name="rightMargin">
+       <number>18</number>
+      </property>
+      <property name="bottomMargin">
+       <number>18</number>
+      </property>
+      <property name="spacing">
+       <number>12</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="lblTitle">
+        <property name="text">
+         <string>CRUD</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="toolbarLayout">
+        <property name="spacing">
+         <number>8</number>
+        </property>
+        <item>
+         <widget class="QLineEdit" name="lineSearch">
+          <property name="placeholderText">
+           <string>Tìm kiếm...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btnRefresh">
+          <property name="text">
+           <string>Làm mới</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btnAdd">
+          <property name="text">
+           <string>Thêm</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btnEdit">
+          <property name="text">
+           <string>Sửa</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btnDelete">
+          <property name="text">
+           <string>Xoá</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QTableView" name="tableView"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
+

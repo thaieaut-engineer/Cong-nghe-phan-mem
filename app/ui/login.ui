@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>LoginForm</class>
+ <widget class="QWidget" name="LoginForm">
+  <property name="minimumSize">
+   <size>
+    <width>420</width>
+    <height>520</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Đăng nhập</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>24</number>
+   </property>
+   <property name="topMargin">
+    <number>24</number>
+   </property>
+   <property name="rightMargin">
+    <number>24</number>
+   </property>
+   <property name="bottomMargin">
+    <number>24</number>
+   </property>
+   <property name="spacing">
+    <number>16</number>
+   </property>
+   <item>
+    <widget class="QFrame" name="card">
+     <property name="styleSheet">
+      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;} QLabel#lblTitle{font-size:22px;font-weight:700;color:#111827;} QLabel{color:#374151;} QLineEdit{padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:12pt;} QLineEdit:focus{border:1px solid #2563eb;} QPushButton#btnLogin{background:#2563eb;color:white;border:none;border-radius:10px;padding:10px 12px;font-weight:600;} QPushButton#btnLogin:hover{background:#1d4ed8;} QPushButton#btnLogin:pressed{background:#1e40af;}</string>
+     </property>
+     <layout class="QVBoxLayout" name="cardLayout">
+      <property name="leftMargin">
+       <number>22</number>
+      </property>
+      <property name="topMargin">
+       <number>22</number>
+      </property>
+      <property name="rightMargin">
+       <number>22</number>
+      </property>
+      <property name="bottomMargin">
+       <number>22</number>
+      </property>
+      <property name="spacing">
+       <number>12</number>
+      </property>
+      <item>
+       <widget class="QLabel" name="lblTitle">
+        <property name="text">
+         <string>Billiards Manager</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="lblSubtitle">
+        <property name="text">
+         <string>Đăng nhập để quản lý quán</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="spacerTop">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>24</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="lblUser">
+        <property name="text">
+         <string>Tài khoản</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="lineEditUsername">
+        <property name="placeholderText">
+         <string>Nhập username</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="lblPass">
+        <property name="text">
+         <string>Mật khẩu</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="lineEditPassword">
+        <property name="placeholderText">
+         <string>Nhập mật khẩu</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="spacerMid">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>14</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnLogin">
+        <property name="text">
+         <string>Đăng nhập</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnRegister">
+        <property name="text">
+         <string>Tạo tài khoản</string>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">QPushButton#btnRegister{background:transparent;border:1px solid #d1d5db;border-radius:10px;padding:10px 12px;font-weight:600;color:#111827;} QPushButton#btnRegister:hover{background:#f3f4f6;}</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="spacerBottom">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
+
