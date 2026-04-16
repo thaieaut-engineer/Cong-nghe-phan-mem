@@ -5,6 +5,12 @@
   <property name="windowTitle">
    <string>Billiards Manager</string>
   </property>
+  <property name="minimumSize">
+   <size>
+    <width>960</width>
+    <height>560</height>
+   </size>
+  </property>
   <layout class="QHBoxLayout" name="rootLayout">
    <property name="leftMargin">
     <number>0</number>
@@ -27,6 +33,12 @@
       <size>
        <width>260</width>
        <height>0</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>300</width>
+       <height>16777215</height>
       </size>
      </property>
      <property name="styleSheet">
@@ -70,6 +82,12 @@
       </item>
       <item>
        <widget class="QListWidget" name="listMenu">
+        <property name="sizePolicy" stdset="0">
+         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
         <property name="currentRow">
          <number>0</number>
         </property>
@@ -160,6 +178,12 @@
    </item>
    <item>
     <widget class="QFrame" name="content">
+     <property name="sizePolicy" stdset="0">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>1</horstretch>
+       <verstretch>1</verstretch>
+      </sizepolicy>
+     </property>
      <property name="styleSheet">
       <string notr="true">QFrame#content{background:#f8fafc;} QLabel{color:#111827;} QFrame#topbar{background:#ffffff;border-bottom:1px solid #e5e7eb;} QStackedWidget{background:transparent;} QFrame.pageCard{background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;} QLabel.pageTitle{font-size:18px;font-weight:700;}</string>
      </property>
@@ -222,6 +246,12 @@
       </item>
       <item>
        <widget class="QStackedWidget" name="stackedPages">
+        <property name="sizePolicy" stdset="0">
+         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+          <horstretch>1</horstretch>
+          <verstretch>1</verstretch>
+         </sizepolicy>
+        </property>
         <property name="currentIndex">
          <number>0</number>
         </property>

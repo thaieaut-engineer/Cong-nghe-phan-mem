@@ -4,7 +4,7 @@ from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QStandardItem, QStandardItemModel
-from PySide6.QtWidgets import QTableView
+from PySide6.QtWidgets import QHeaderView, QSizePolicy, QTableView
 
 
 def build_model(headers: list[str], rows: list[list[Any]]) -> QStandardItemModel:
@@ -26,7 +26,10 @@ def configure_table_view(view: QTableView) -> None:
     view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
     view.setSelectionMode(QTableView.SelectionMode.SingleSelection)
     view.setAlternatingRowColors(True)
-    view.horizontalHeader().setStretchLastSection(True)
+    view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+    hdr = view.horizontalHeader()
+    hdr.setStretchLastSection(True)
+    hdr.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
     view.verticalHeader().setVisible(False)
 
 

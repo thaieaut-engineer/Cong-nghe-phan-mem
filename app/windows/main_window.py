@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QDateTimeEdit,
     QSpinBox,
+    QFrame,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -17,6 +18,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QDoubleSpinBox,
     QFileDialog,
+    QSizePolicy,
     QStackedWidget,
     QTableView,
     QTextEdit,
@@ -83,6 +85,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Billiards Manager")
         self._ui: QWidget = load_ui("main.ui", self)
         self.setCentralWidget(self._ui)
+        self._apply_main_window_layout_stretch()
 
         self._lbl_user = get_child(self._ui, QLabel, "lblUser")
         self._list_menu = get_child(self._ui, QListWidget, "listMenu")
@@ -162,6 +165,17 @@ class MainWindow(QMainWindow):
         event.accept()
         super().closeEvent(event)
 
+    def _apply_main_window_layout_stretch(self) -> None:
+        root = self._ui.layout()
+        if root is not None and root.count() >= 2:
+            root.setStretch(0, 0)
+            root.setStretch(1, 1)
+        content = get_child(self._ui, QWidget, "content")
+        cl = content.layout()
+        if cl is not None and cl.count() >= 2:
+            cl.setStretch(0, 0)
+            cl.setStretch(1, 1)
+
     def _replace_page_with_crud(self, page_object_name: str, title: str) -> QWidget:
         page = get_child(self._ui, QWidget, page_object_name)
         layout = page.layout()
@@ -179,7 +193,20 @@ class MainWindow(QMainWindow):
         table_view = get_child(crud, QTableView, "tableView")
         configure_table_view(table_view)
 
+        outer = crud.layout()
+        if outer is not None and outer.count() >= 1:
+            outer.setStretch(0, 1)
+        card = get_child(crud, QFrame, "card")
+        card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        card_layout = card.layout()
+        if card_layout is not None and card_layout.count() >= 3:
+            card_layout.setStretch(0, 0)
+            card_layout.setStretch(1, 0)
+            card_layout.setStretch(2, 1)
+
         layout.addWidget(crud)
+        if layout.count() >= 1:
+            layout.setStretch(layout.count() - 1, 1)
         return crud
 
     def _init_table_types_page(self) -> None:
