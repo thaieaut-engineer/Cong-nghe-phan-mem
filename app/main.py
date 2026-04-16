@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 
+from PySide6.QtCore import QEventLoop
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from app.core.db import Database
@@ -25,13 +26,19 @@ def main() -> int:
     auth = AuthService(users)
     register = RegisterService(users)
 
-    login = LoginWindow(auth, register)
-    if login.exec() != LoginWindow.DialogCode.Accepted or not login.user:
-        return 0
+    while True:
+        login = LoginWindow(auth, register)
+        if login.exec() != LoginWindow.DialogCode.Accepted or not login.user:
+            return 0
 
-    window = MainWindow(login.user, db)
-    window.show()
-    return app.exec()
+        close_result = ["relogin"]
+        window = MainWindow(login.user, db, close_result)
+        wait_close = QEventLoop()
+        window.destroyed.connect(wait_close.quit)
+        window.show()
+        wait_close.exec()
+        if close_result[0] == "quit":
+            return 0
 
 
 if __name__ == "__main__":

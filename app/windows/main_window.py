@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDialog,
     QDialogButtonBox,
@@ -45,8 +46,12 @@ from app.services.register_service import RegisterService
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, user: dict, db: Database) -> None:
+    def __init__(self, user: dict, db: Database, close_result: list[str] | None = None) -> None:
         super().__init__()
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        # main.py truyền ["relogin"] hoặc ["quit"] sau khi đóng — Đăng xuất vs nút X
+        self._close_result = close_result if close_result is not None else ["relogin"]
+        self._logout_via_button = False
         self._user = user
         self._db = db
         self._table_types_repo = TableTypeRepository(db)
@@ -143,7 +148,19 @@ class MainWindow(QMainWindow):
         self._stacked.setCurrentIndex(int(si))
 
     def _on_logout(self) -> None:
+        self._logout_via_button = True
         self.close()
+
+    def closeEvent(self, event) -> None:
+        if self._logout_via_button:
+            self._logout_via_button = False
+            self._close_result[0] = "relogin"
+            event.accept()
+            return super().closeEvent(event)
+        self._close_result[0] = "quit"
+        QApplication.quit()
+        event.accept()
+        super().closeEvent(event)
 
     def _replace_page_with_crud(self, page_object_name: str, title: str) -> QWidget:
         page = get_child(self._ui, QWidget, page_object_name)
