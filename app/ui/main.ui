@@ -803,6 +803,53 @@
           </item>
          </layout>
         </widget>
+        <widget class="QWidget" name="pageUsers">
+         <layout class="QVBoxLayout" name="layoutUsers">
+          <property name="leftMargin">
+           <number>18</number>
+          </property>
+          <property name="topMargin">
+           <number>18</number>
+          </property>
+          <property name="rightMargin">
+           <number>18</number>
+          </property>
+          <property name="bottomMargin">
+           <number>18</number>
+          </property>
+          <item>
+           <widget class="QFrame" name="cardUsers" native="true">
+            <property name="class">
+             <string notr="true">pageCard</string>
+            </property>
+            <layout class="QVBoxLayout" name="cardUsersLayout">
+             <property name="leftMargin">
+              <number>18</number>
+             </property>
+             <property name="topMargin">
+              <number>18</number>
+             </property>
+             <property name="rightMargin">
+              <number>18</number>
+             </property>
+             <property name="bottomMargin">
+              <number>18</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblUsersTitle">
+               <property name="text">
+                <string>Tài khoản</string>
+               </property>
+               <property name="class">
+                <string notr="true">pageTitle</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
        </widget>
       </item>
      </layout>

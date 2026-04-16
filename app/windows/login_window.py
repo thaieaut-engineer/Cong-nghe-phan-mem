@@ -1,6 +1,15 @@
 from __future__ import annotations
 
-from PySide6.QtWidgets import QComboBox, QDialog, QDialogButtonBox, QMessageBox, QPushButton, QLineEdit, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QDialog,
+    QDialogButtonBox,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QLineEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from app.core.ui import get_child, load_ui
 from app.services.auth_service import AuthService
@@ -53,7 +62,9 @@ class LoginWindow(QDialog):
         line_user = get_child(dlg, QLineEdit, "lineUsername")
         line_pass1 = get_child(dlg, QLineEdit, "linePassword")
         line_pass2 = get_child(dlg, QLineEdit, "linePassword2")
-        combo_role = get_child(dlg, QComboBox, "comboRole")
+        get_child(dlg, QLabel, "labelRole").hide()
+        combo_role = get_child(dlg, QWidget, "comboRole")
+        combo_role.hide()
         buttons = get_child(dlg, QDialogButtonBox, "buttonBox")
         buttons.accepted.connect(dlg.accept)
         buttons.rejected.connect(dlg.reject)
@@ -61,25 +72,28 @@ class LoginWindow(QDialog):
         line_pass1.setEchoMode(QLineEdit.EchoMode.Password)
         line_pass2.setEchoMode(QLineEdit.EchoMode.Password)
 
-        combo_role.clear()
-        roles = self._register.list_roles()
-        for r in roles:
-            combo_role.addItem(str(r["name"]), int(r["id"]))
-
         if isinstance(dlg, QDialog) and dlg.exec() == QDialog.DialogCode.Accepted:
             username = line_user.text().strip()
             p1 = line_pass1.text()
             p2 = line_pass2.text()
-            role_id = int(combo_role.currentData())
             if p1 != p2:
                 QMessageBox.warning(self, "Sai", "Mật khẩu nhập lại không khớp.")
+                return
+            try:
+                role_id = self._register.get_default_public_role_id()
+            except ValueError as e:
+                QMessageBox.warning(self, "Cấu hình", str(e))
                 return
             try:
                 self._register.register(username, p1, role_id)
             except Exception as e:
                 QMessageBox.critical(self, "Không tạo được tài khoản", str(e))
                 return
-            QMessageBox.information(self, "Thành công", "Đã tạo tài khoản. Bạn có thể đăng nhập ngay.")
+            QMessageBox.information(
+                self,
+                "Thành công",
+                "Đã tạo tài khoản với quyền user (nhân viên). Bạn có thể đăng nhập ngay.",
+            )
             self._line_user.setText(username)
             self._line_pass.setText("")
 

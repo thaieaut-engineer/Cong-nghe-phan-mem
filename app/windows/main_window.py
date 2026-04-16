@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Slot
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QListWidget,
+    QListWidgetItem,
     QMainWindow,
     QMessageBox,
     QPushButton,
@@ -25,6 +26,7 @@ from PySide6.QtWidgets import (
 
 from app.core.ui import get_child, load_ui
 from app.core.db import Database
+from app.core.permissions import is_admin, menu_entries_for_role, normalize_role
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.employee_repository import EmployeeRepository
 from app.repositories.invoice_repository import InvoiceRepository
@@ -36,8 +38,10 @@ from app.repositories.stats_repository import StatsRepository
 from app.repositories.table_repository import TableRepository
 from app.repositories.table_type_repository import TableTypeRepository
 from app.repositories.shift_repository import ShiftRepository
+from app.repositories.user_repository import UserRepository
 from app.widgets.table_helpers import build_model, configure_table_view, selected_row_data
 from app.services.invoice_pdf_service import export_invoice_pdf
+from app.services.register_service import RegisterService
 
 
 class MainWindow(QMainWindow):
@@ -56,6 +60,8 @@ class MainWindow(QMainWindow):
         self._sessions_repo = SessionRepository(db)
         self._invoices_repo = InvoiceRepository(db)
         self._stats_repo = StatsRepository(db)
+        self._users_repo = UserRepository(db)
+        self._register = RegisterService(self._users_repo)
 
         self._table_types_cache: list[dict] = []
         self._tables_cache: list[dict] = []
@@ -67,6 +73,7 @@ class MainWindow(QMainWindow):
         self._bookings_cache: list[dict] = []
         self._sessions_cache: list[dict] = []
         self._invoices_cache: list[dict] = []
+        self._users_cache: list[dict] = []
 
         self.setWindowTitle("Billiards Manager")
         self._ui: QWidget = load_ui("main.ui", self)
@@ -77,11 +84,9 @@ class MainWindow(QMainWindow):
         self._btn_logout = get_child(self._ui, QPushButton, "btnLogout")
         self._stacked = get_child(self._ui, QStackedWidget, "stackedPages")
 
-        self._lbl_user.setText(f"Xin chào, {user.get('username', '')}")
-        self._list_menu.currentRowChanged.connect(self._on_menu_changed)
+        rn = normalize_role(user.get("role_name"))
+        self._lbl_user.setText(f"Xin chào, {user.get('username', '')}\n(Quyền: {rn})")
         self._btn_logout.clicked.connect(self._on_logout)
-
-        self._list_menu.setCurrentRow(0)
 
         self._init_table_types_page()
         self._init_tables_page()
@@ -94,12 +99,48 @@ class MainWindow(QMainWindow):
         self._init_sessions_page()
         self._init_invoices_page()
         self._init_stats_page()
+        if is_admin(user.get("role_name")):
+            self._init_users_page()
+
+        self._build_role_menu()
+        self._list_menu.currentRowChanged.connect(self._on_menu_changed)
+        if self._list_menu.count() > 0:
+            self._list_menu.setCurrentRow(0)
+
+    def _stacked_index_for_page(self, page_object_name: str) -> int:
+        for i in range(self._stacked.count()):
+            w = self._stacked.widget(i)
+            if w is not None and w.objectName() == page_object_name:
+                return i
+        return -1
+
+    def _build_role_menu(self) -> None:
+        self._list_menu.clear()
+        for page_name, label in menu_entries_for_role(self._user.get("role_name")):
+            idx = self._stacked_index_for_page(page_name)
+            if idx < 0:
+                continue
+            item = QListWidgetItem(label)
+            item.setData(Qt.ItemDataRole.UserRole, idx)
+            self._list_menu.addItem(item)
+        if self._list_menu.count() > 0:
+            first = self._list_menu.item(0)
+            if first is not None:
+                si = first.data(Qt.ItemDataRole.UserRole)
+                if si is not None:
+                    self._stacked.setCurrentIndex(int(si))
 
     @Slot(int)
-    def _on_menu_changed(self, idx: int) -> None:
-        if idx < 0:
+    def _on_menu_changed(self, row: int) -> None:
+        if row < 0:
             return
-        self._stacked.setCurrentIndex(idx)
+        item = self._list_menu.item(row)
+        if item is None:
+            return
+        si = item.data(Qt.ItemDataRole.UserRole)
+        if si is None:
+            return
+        self._stacked.setCurrentIndex(int(si))
 
     def _on_logout(self) -> None:
         self.close()
@@ -1328,4 +1369,143 @@ class MainWindow(QMainWindow):
         data = [[r.get("service_name", ""), r.get("qty", 0), r.get("amount", 0)] for r in rows]
         self._stt_table.setModel(build_model(["Dịch vụ", "SL", "Doanh thu"], data))
         self._stt_table.resizeColumnsToContents()
+
+    # ---------- Users (admin only — menu đã ẩn với staff) ----------
+    def _init_users_page(self) -> None:
+        self._crud_users = self._replace_page_with_crud("pageUsers", "Tài khoản & phân quyền")
+        self._us_search = get_child(self._crud_users, QLineEdit, "lineSearch")
+        self._us_refresh = get_child(self._crud_users, QPushButton, "btnRefresh")
+        self._us_add = get_child(self._crud_users, QPushButton, "btnAdd")
+        self._us_edit = get_child(self._crud_users, QPushButton, "btnEdit")
+        self._us_delete = get_child(self._crud_users, QPushButton, "btnDelete")
+        self._us_table = get_child(self._crud_users, QTableView, "tableView")
+
+        self._us_add.setText("Thêm TK")
+        self._us_edit.setText("Đổi quyền")
+
+        self._us_refresh.clicked.connect(self._reload_users)
+        self._us_add.clicked.connect(self._add_user_admin)
+        self._us_edit.clicked.connect(self._edit_user_role)
+        self._us_delete.clicked.connect(self._delete_user_admin)
+        self._us_search.textChanged.connect(self._apply_users_filter)
+        self._reload_users()
+
+    def _reload_users(self) -> None:
+        try:
+            self._users_cache = self._users_repo.list_users_with_roles()
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi DB", str(e))
+            return
+        self._apply_users_filter()
+
+    def _apply_users_filter(self) -> None:
+        q = self._us_search.text().strip().lower() if hasattr(self, "_us_search") else ""
+        rows = []
+        for r in self._users_cache:
+            un = str(r.get("username", ""))
+            rn = str(r.get("role_name", "") or "")
+            if q and q not in un.lower() and q not in rn.lower():
+                continue
+            rows.append([r["id"], un, rn])
+        self._us_table.setModel(build_model(["ID", "Username", "Chức vụ"], rows))
+        self._us_table.resizeColumnsToContents()
+
+    def _add_user_admin(self) -> None:
+        dlg = load_ui("dialog_register.ui", self)
+        line_user = get_child(dlg, QLineEdit, "lineUsername")
+        line_p1 = get_child(dlg, QLineEdit, "linePassword")
+        line_p2 = get_child(dlg, QLineEdit, "linePassword2")
+        combo_role = get_child(dlg, QComboBox, "comboRole")
+        buttons = get_child(dlg, QDialogButtonBox, "buttonBox")
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        line_p1.setEchoMode(QLineEdit.EchoMode.Password)
+        line_p2.setEchoMode(QLineEdit.EchoMode.Password)
+        combo_role.clear()
+        for r in self._register.list_roles():
+            combo_role.addItem(str(r["name"]))
+            idx = combo_role.count() - 1
+            combo_role.setItemData(idx, int(r["id"]), Qt.ItemDataRole.UserRole)
+        if combo_role.count() > 0:
+            combo_role.setCurrentIndex(0)
+
+        if isinstance(dlg, QDialog) and dlg.exec() == QDialog.DialogCode.Accepted:
+            username = line_user.text().strip()
+            p1 = line_p1.text()
+            p2 = line_p2.text()
+            role_data = combo_role.currentData(Qt.ItemDataRole.UserRole)
+            if role_data is None and combo_role.currentIndex() >= 0:
+                role_data = combo_role.itemData(combo_role.currentIndex(), Qt.ItemDataRole.UserRole)
+            if combo_role.count() == 0 or role_data is None:
+                QMessageBox.warning(self, "Thiếu thông tin", "Vui lòng chọn chức vụ.")
+                return
+            role_id = int(role_data)
+            if p1 != p2:
+                QMessageBox.warning(self, "Sai", "Mật khẩu nhập lại không khớp.")
+                return
+            try:
+                self._register.register(username, p1, role_id, allow_admin_role=True)
+            except Exception as e:
+                QMessageBox.critical(self, "Lỗi", str(e))
+                return
+            self._reload_users()
+
+    def _edit_user_role(self) -> None:
+        row = selected_row_data(self._us_table)
+        if not row:
+            QMessageBox.information(self, "Chọn dòng", "Chọn một tài khoản để đổi quyền.")
+            return
+        uid = int(row[0])
+        current = next((x for x in self._users_cache if int(x["id"]) == uid), None)
+        if current is None:
+            return
+
+        dlg = load_ui("dialog_user_role.ui", self)
+        line_u = get_child(dlg, QLineEdit, "lineUsername")
+        combo_role = get_child(dlg, QComboBox, "comboRole")
+        buttons = get_child(dlg, QDialogButtonBox, "buttonBox")
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        line_u.setText(str(current.get("username", "")))
+        combo_role.clear()
+        for r in self._register.list_roles():
+            combo_role.addItem(str(r["name"]))
+            idx = combo_role.count() - 1
+            combo_role.setItemData(idx, int(r["id"]), Qt.ItemDataRole.UserRole)
+        rid = current.get("role_id")
+        if rid is not None:
+            ix = combo_role.findData(int(rid), Qt.ItemDataRole.UserRole)
+            if ix >= 0:
+                combo_role.setCurrentIndex(ix)
+        elif combo_role.count() > 0:
+            combo_role.setCurrentIndex(0)
+
+        if isinstance(dlg, QDialog) and dlg.exec() == QDialog.DialogCode.Accepted:
+            new_rid = combo_role.currentData(Qt.ItemDataRole.UserRole)
+            if new_rid is None and combo_role.currentIndex() >= 0:
+                new_rid = combo_role.itemData(combo_role.currentIndex(), Qt.ItemDataRole.UserRole)
+            try:
+                self._users_repo.update_user_role(uid, int(new_rid) if new_rid is not None else None)
+            except Exception as e:
+                QMessageBox.critical(self, "Lỗi", str(e))
+                return
+            self._reload_users()
+
+    def _delete_user_admin(self) -> None:
+        row = selected_row_data(self._us_table)
+        if not row:
+            QMessageBox.information(self, "Chọn dòng", "Chọn một tài khoản để xoá.")
+            return
+        uid = int(row[0])
+        if uid == int(self._user["id"]):
+            QMessageBox.warning(self, "Không được", "Không thể xoá chính tài khoản đang đăng nhập.")
+            return
+        if QMessageBox.question(self, "Xác nhận", "Xoá tài khoản này?") != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            self._users_repo.delete_user(uid)
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi", str(e))
+            return
+        self._reload_users()
 

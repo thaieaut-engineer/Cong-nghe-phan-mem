@@ -23,8 +23,9 @@ def main() -> int:
     )
     cur = conn.cursor()
 
-    # roles
+    # roles: admin / user (mặc định đăng ký) / staff
     cur.execute("INSERT IGNORE INTO roles(name) VALUES(%s)", ("admin",))
+    cur.execute("INSERT IGNORE INTO roles(name) VALUES(%s)", ("user",))
     cur.execute("INSERT IGNORE INTO roles(name) VALUES(%s)", ("staff",))
     conn.commit()
 
