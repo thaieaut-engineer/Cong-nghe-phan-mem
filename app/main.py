@@ -5,6 +5,7 @@ import sys
 from PySide6.QtCore import QEventLoop
 from PySide6.QtWidgets import QApplication, QMessageBox
 
+from app.core.theme import apply_theme
 from app.core.db import Database
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
@@ -16,6 +17,7 @@ from app.windows.main_window import MainWindow
 def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("Billiards Manager")
+    apply_theme(app)
 
     try:
         db = Database()

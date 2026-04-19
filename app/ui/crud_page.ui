@@ -21,7 +21,7 @@
    <item>
     <widget class="QFrame" name="card" native="true">
      <property name="styleSheet">
-      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;} QLabel#lblTitle{font-size:18px;font-weight:700;color:#111827;} QLineEdit{padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;} QLineEdit:focus{border:1px solid #2563eb;} QPushButton{padding:8px 10px;border-radius:10px;border:1px solid #d1d5db;background:#f9fafb;} QPushButton:hover{background:#f3f4f6;} QPushButton#btnAdd{background:#2563eb;border:none;color:white;font-weight:600;} QPushButton#btnAdd:hover{background:#1d4ed8;} QPushButton#btnAdd:pressed{background:#1e40af;} QTableView{border:1px solid #e5e7eb;border-radius:12px;}</string>
+      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #d4e4f7;border-radius:16px;} QLabel#lblTitle{font-size:18px;font-weight:700;color:#1e3a5f;} QLineEdit{padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;} QLineEdit:focus{border:1px solid #5ea0e6;} QPushButton{padding:8px 10px;border-radius:10px;border:1px solid #d1d5db;background:#f9fafb;} QPushButton:hover{background:#f3f4f6;} QPushButton#btnAdd{background:#5ea0e6;border:none;color:white;font-weight:600;} QPushButton#btnAdd:hover{background:#4a8fd4;} QPushButton#btnAdd:pressed{background:#3d82c4;} QTableView{border:1px solid #d4e4f7;border-radius:12px;}</string>
      </property>
      <layout class="QVBoxLayout" name="cardLayout">
       <property name="leftMargin">

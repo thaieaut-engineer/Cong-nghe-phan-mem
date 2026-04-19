@@ -43,6 +43,7 @@ from app.repositories.table_type_repository import TableTypeRepository
 from app.repositories.shift_repository import ShiftRepository
 from app.repositories.user_repository import UserRepository
 from app.widgets.table_helpers import build_model, configure_table_view, selected_row_data
+from app.widgets.sessions_board import SessionsBoard, TableState
 from app.services.invoice_pdf_service import export_invoice_pdf
 from app.services.register_service import RegisterService
 
@@ -1151,24 +1152,39 @@ class MainWindow(QMainWindow):
 
     # ---------- Sessions (start/end + add service) ----------
     def _init_sessions_page(self) -> None:
-        self._crud_sessions = self._replace_page_with_crud("pageSessions", "Phiên chơi")
-        self._ss_search = get_child(self._crud_sessions, QLineEdit, "lineSearch")
-        self._ss_refresh = get_child(self._crud_sessions, QPushButton, "btnRefresh")
-        self._ss_add = get_child(self._crud_sessions, QPushButton, "btnAdd")
-        self._ss_edit = get_child(self._crud_sessions, QPushButton, "btnEdit")
-        self._ss_delete = get_child(self._crud_sessions, QPushButton, "btnDelete")
-        self._ss_table = get_child(self._crud_sessions, QTableView, "tableView")
+        page = get_child(self._ui, QWidget, "pageSessions")
+        layout = page.layout()
+        if layout is None:
+            layout = QVBoxLayout(page)
 
-        self._ss_add.setText("Bắt đầu")
-        self._ss_edit.setText("Kết thúc")
-        self._ss_delete.setText("Thêm DV")
+        while layout.count():
+            item = layout.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.deleteLater()
 
-        self._ss_refresh.clicked.connect(self._reload_sessions)
-        self._ss_add.clicked.connect(self._start_session)
-        self._ss_edit.clicked.connect(self._end_session)
-        self._ss_delete.clicked.connect(self._add_service_to_session)
-        self._ss_search.textChanged.connect(self._apply_sessions_filter)
-        self._reload_sessions()
+        container = QFrame(page)
+        container.setProperty("card", True)
+        outer = QVBoxLayout(container)
+        outer.setContentsMargins(18, 18, 18, 18)
+        outer.setSpacing(12)
+
+        title = QLabel("Phiên chơi")
+        title.setProperty("muted", False)
+        title.setStyleSheet("font-size:18px;font-weight:800;")
+        outer.addWidget(title)
+
+        self._sessions_board = SessionsBoard(container)
+        self._sessions_board.refresh_requested.connect(self._reload_sessions_board)
+        self._sessions_board.start_requested.connect(self._start_session_from_table)
+        self._sessions_board.end_requested.connect(self._end_session_by_id)
+        self._sessions_board.add_service_requested.connect(self._add_service_to_session_by_id)
+        outer.addWidget(self._sessions_board, 1)
+
+        layout.addWidget(container)
+        layout.setStretch(layout.count() - 1, 1)
+
+        self._reload_sessions_board()
 
     def _reload_sessions(self) -> None:
         try:
@@ -1196,6 +1212,43 @@ class MainWindow(QMainWindow):
             )
         self._ss_table.setModel(build_model(["ID", "Bàn", "Bắt đầu", "Kết thúc", "Tổng"], rows))
         self._ss_table.resizeColumnsToContents()
+
+    def _reload_sessions_board(self) -> None:
+        try:
+            tables = self._tables_repo.list_all()
+            sessions = self._sessions_repo.list_all()
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi DB", str(e))
+            return
+
+        active_by_table: dict[int, dict] = {}
+        for s in sessions:
+            if s.get("end_time"):
+                continue
+            tid = s.get("table_id")
+            if tid is None:
+                continue
+            if int(tid) not in active_by_table:
+                active_by_table[int(tid)] = s
+
+        items: list[TableState] = []
+        for t in sorted(tables, key=lambda x: int(x.get("id", 0))):
+            tid = int(t["id"])
+            active = active_by_table.get(tid)
+            items.append(
+                TableState(
+                    table_id=tid,
+                    name=str(t.get("name", "")),
+                    status=str(t.get("status") or "empty"),
+                    type_name=str(t.get("type_name") or ""),
+                    price_per_hour=float(t.get("price_per_hour") or 0),
+                    active_session_id=(int(active["id"]) if active else None),
+                    active_start_time=(str(active.get("start_time", "")) if active else None),
+                    active_total=float(active.get("total") or 0) if active else 0.0,
+                )
+            )
+
+        self._sessions_board.set_tables(items)
 
     def _start_session(self) -> None:
         dlg = load_ui("dialog_session_start.ui", self)
@@ -1225,6 +1278,15 @@ class MainWindow(QMainWindow):
             self._reload_sessions()
             self._reload_tables()
 
+    def _start_session_from_table(self, table_id: int) -> None:
+        try:
+            self._sessions_repo.start_session(int(table_id))
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi", str(e))
+            return
+        self._reload_sessions_board()
+        self._reload_tables()
+
     def _end_session(self) -> None:
         row = selected_row_data(self._ss_table)
         if not row:
@@ -1248,6 +1310,22 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Lỗi", str(e))
             return
         self._reload_sessions()
+        self._reload_invoices()
+        self._reload_tables()
+
+    def _end_session_by_id(self, session_id: int) -> None:
+        if QMessageBox.question(self, "Xác nhận", "Kết thúc phiên và tạo hoá đơn?") != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            total = self._sessions_repo.end_session(int(session_id))
+            try:
+                self._invoices_repo.create_for_session(int(session_id), float(total))
+            except Exception:
+                pass
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi", str(e))
+            return
+        self._reload_sessions_board()
         self._reload_invoices()
         self._reload_tables()
 
@@ -1298,6 +1376,51 @@ class MainWindow(QMainWindow):
                 QMessageBox.critical(self, "Lỗi", str(e))
                 return
             self._reload_sessions()
+
+    def _add_service_to_session_by_id(self, session_id: int) -> None:
+        current = self._sessions_repo.get_detail(int(session_id))
+        if current and current.get("end_time"):
+            QMessageBox.information(self, "Phiên đã kết thúc", "Không thể thêm dịch vụ cho phiên đã kết thúc.")
+            return
+        # Reuse existing dialog flow
+        self._add_service_to_session_with_id(int(session_id))
+
+    def _add_service_to_session_with_id(self, session_id: int) -> None:
+        dlg = load_ui("dialog_session_service.ui", self)
+        combo_sv = get_child(dlg, QComboBox, "comboService")
+        spin_qty = get_child(dlg, QSpinBox, "spinQty")
+        spin_unit = get_child(dlg, QDoubleSpinBox, "spinUnitPrice")
+        buttons = get_child(dlg, QDialogButtonBox, "buttonBox")
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+
+        services = self._services_repo.list_all()
+        if not services:
+            QMessageBox.information(self, "Chưa có dịch vụ", "Bạn cần tạo dịch vụ trước.")
+            return
+        combo_sv.clear()
+        for s in services:
+            combo_sv.addItem(f"{s['name']} ({s.get('price',0)}đ)", (int(s["id"]), float(s.get("price", 0) or 0)))
+
+        def sync_price() -> None:
+            _, price = combo_sv.currentData()
+            spin_unit.setValue(float(price))
+
+        combo_sv.currentIndexChanged.connect(sync_price)
+        sync_price()
+
+        if isinstance(dlg, QDialog) and dlg.exec() == QDialog.DialogCode.Accepted:
+            service_id, _ = combo_sv.currentData()
+            qty = int(spin_qty.value())
+            unit = float(spin_unit.value())
+            try:
+                self._sessions_repo.add_service(int(session_id), int(service_id), qty, unit)
+                total = self._sessions_repo.compute_total(int(session_id))
+                self._db.execute("UPDATE sessions SET total=%s WHERE id=%s", (float(total), int(session_id)))
+            except Exception as e:
+                QMessageBox.critical(self, "Lỗi", str(e))
+                return
+            self._reload_sessions_board()
 
     # ---------- Invoices (export PDF) ----------
     def _init_invoices_page(self) -> None:

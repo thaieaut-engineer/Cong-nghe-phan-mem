@@ -42,7 +42,7 @@
       </size>
      </property>
      <property name="styleSheet">
-      <string notr="true">QFrame#sidebar{background:#0f172a;color:#e5e7eb;} QLabel#lblBrand{font-size:18px;font-weight:700;color:#ffffff;} QListWidget{border:none;background:transparent;} QListWidget::item{padding:10px 12px;border-radius:10px;margin:3px 10px;color:#e5e7eb;} QListWidget::item:selected{background:#1e293b;color:#ffffff;} QPushButton#btnLogout{background:#111827;border:1px solid #334155;color:#e5e7eb;border-radius:10px;padding:10px 12px;} QPushButton#btnLogout:hover{background:#0b1220;}</string>
+      <string notr="true">QFrame#sidebar{background:#e8f2fc;border-right:1px solid #c8ddf0;color:#334e68;} QLabel#lblBrand{font-size:18px;font-weight:700;color:#2568a8;} QListWidget{border:none;background:transparent;} QListWidget::item{padding:10px 12px;border-radius:10px;margin:3px 10px;color:#334e68;} QListWidget::item:hover{background:#ddeaf9;} QListWidget::item:selected{background:#cfe2f7;color:#153a5c;} QPushButton#btnLogout{background:#ffffff;border:1px solid #8eb8e0;color:#1e4976;border-radius:10px;padding:10px 12px;} QPushButton#btnLogout:hover{background:#f0f7ff;border-color:#6ba3d4;}</string>
      </property>
      <layout class="QVBoxLayout" name="sidebarLayout">
       <property name="leftMargin">
@@ -185,7 +185,7 @@
       </sizepolicy>
      </property>
      <property name="styleSheet">
-      <string notr="true">QFrame#content{background:#f8fafc;} QLabel{color:#111827;} QFrame#topbar{background:#ffffff;border-bottom:1px solid #e5e7eb;} QStackedWidget{background:transparent;} QFrame.pageCard{background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;} QLabel.pageTitle{font-size:18px;font-weight:700;}</string>
+      <string notr="true">QFrame#content{background:#f4f8fd;} QLabel{color:#1e3a5f;} QFrame#topbar{background:#ffffff;border-bottom:1px solid #d4e4f7;} QStackedWidget{background:transparent;} QFrame.pageCard{background:#ffffff;border:1px solid #d4e4f7;border-radius:16px;} QLabel.pageTitle{font-size:18px;font-weight:700;}</string>
      </property>
      <layout class="QVBoxLayout" name="contentLayout">
       <property name="leftMargin">

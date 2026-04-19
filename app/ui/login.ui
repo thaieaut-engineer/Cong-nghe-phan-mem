@@ -30,7 +30,7 @@
    <item>
     <widget class="QFrame" name="card">
      <property name="styleSheet">
-      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;} QLabel#lblTitle{font-size:22px;font-weight:700;color:#111827;} QLabel{color:#374151;} QLineEdit{padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:12pt;} QLineEdit:focus{border:1px solid #2563eb;} QPushButton#btnLogin{background:#2563eb;color:white;border:none;border-radius:10px;padding:10px 12px;font-weight:600;} QPushButton#btnLogin:hover{background:#1d4ed8;} QPushButton#btnLogin:pressed{background:#1e40af;}</string>
+      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #d4e4f7;border-radius:16px;} QLabel#lblTitle{font-size:22px;font-weight:700;color:#1e3a5f;} QLabel{color:#374151;} QLineEdit{padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:12pt;} QLineEdit:focus{border:1px solid #5ea0e6;} QPushButton#btnLogin{background:#5ea0e6;color:white;border:none;border-radius:10px;padding:10px 12px;font-weight:600;} QPushButton#btnLogin:hover{background:#4a8fd4;} QPushButton#btnLogin:pressed{background:#3d82c4;}</string>
      </property>
      <layout class="QVBoxLayout" name="cardLayout">
       <property name="leftMargin">
