@@ -4,11 +4,11 @@ from PySide6.QtWidgets import QApplication
 
 
 def app_stylesheet() -> str:
-    # Xanh dương nhạt (soft sky / pastel blue)
-    primary = "#5ea0e6"
-    primary_hover = "#4a8fd4"
-    primary_pressed = "#3d82c4"
-    ring = "#b8d9f8"
+    # Xanh dương (đậm hơn pastel một chút, vẫn không tối như navy)
+    primary = "#4293e6"
+    primary_hover = "#3a8adb"
+    primary_pressed = "#2f7bc8"
+    ring = "#a3cef5"
 
     text = "#1e3a5f"
     muted = "#5c7a9a"
@@ -99,7 +99,7 @@ def app_stylesheet() -> str:
       border: 1px solid {border};
       border-radius: 12px;
       gridline-color: {border};
-      selection-background-color: #e0eef9;
+      selection-background-color: #d4e8fc;
       selection-color: {text};
     }}
     QHeaderView::section {{

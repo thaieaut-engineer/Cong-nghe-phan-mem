@@ -30,7 +30,7 @@
    <item>
     <widget class="QFrame" name="card">
      <property name="styleSheet">
-      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;} QLineEdit, QComboBox, QDoubleSpinBox{padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;} QLineEdit:focus, QComboBox:focus, QDoubleSpinBox:focus{border:1px solid #5ea0e6;}</string>
+      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;} QLineEdit, QComboBox, QDoubleSpinBox{padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;} QLineEdit:focus, QComboBox:focus, QDoubleSpinBox:focus{border:1px solid #4293e6;}</string>
      </property>
      <layout class="QFormLayout" name="formLayout">
       <property name="leftMargin">
