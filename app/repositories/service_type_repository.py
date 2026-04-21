@@ -8,13 +8,13 @@ class ServiceTypeRepository:
         self._db = db
 
     def list_all(self) -> list[dict]:
-        return self._db.fetch_all("SELECT id, name FROM service_types ORDER BY id DESC")
+        return self._db.fetch_all("SELECT id, name, image_path FROM service_types ORDER BY id DESC")
 
-    def create(self, name: str) -> int:
-        return self._db.execute("INSERT INTO service_types(name) VALUES(%s)", (name,))
+    def create(self, name: str, image_path: str | None = None) -> int:
+        return self._db.execute("INSERT INTO service_types(name, image_path) VALUES(%s,%s)", (name, image_path))
 
-    def update(self, type_id: int, name: str) -> int:
-        self._db.execute("UPDATE service_types SET name=%s WHERE id=%s", (name, type_id))
+    def update(self, type_id: int, name: str, image_path: str | None = None) -> int:
+        self._db.execute("UPDATE service_types SET name=%s, image_path=%s WHERE id=%s", (name, image_path, type_id))
         return type_id
 
     def delete(self, type_id: int) -> None:

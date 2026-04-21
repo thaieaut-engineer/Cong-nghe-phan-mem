@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import QEvent, QSize, Qt, Slot
+from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -29,6 +30,7 @@ from PySide6.QtWidgets import (
 
 from app.core.ui import get_child, load_ui
 from app.core.db import Database
+from app.core.image_store import resolve_image_path, store_image
 from app.core.permissions import is_admin, menu_entries_for_role, normalize_role
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.employee_repository import EmployeeRepository
@@ -210,20 +212,186 @@ class MainWindow(QMainWindow):
             layout.setStretch(layout.count() - 1, 1)
         return crud
 
+    def _replace_page_with_crud_grid(self, page_object_name: str, title: str) -> QWidget:
+        page = get_child(self._ui, QWidget, page_object_name)
+        layout = page.layout()
+        if layout is None:
+            layout = QVBoxLayout(page)
+        while layout.count():
+            item = layout.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.deleteLater()
+
+        crud = load_ui("crud_grid_page.ui", page)
+        get_child(crud, QLabel, "lblTitle").setText(title)
+
+        grid_list = get_child(crud, QListWidget, "gridList")
+        grid_list.setUniformItemSizes(True)
+
+        outer = crud.layout()
+        if outer is not None and outer.count() >= 1:
+            outer.setStretch(0, 1)
+        card = get_child(crud, QFrame, "card")
+        card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        card_layout = card.layout()
+        if card_layout is not None and card_layout.count() >= 3:
+            card_layout.setStretch(0, 0)
+            card_layout.setStretch(1, 0)
+            card_layout.setStretch(2, 1)
+
+        layout.addWidget(crud)
+        if layout.count() >= 1:
+            layout.setStretch(layout.count() - 1, 1)
+        return crud
+
+    def _wire_grid_five_columns(self, grid: QListWidget, *, row_height: int, icon_size: QSize) -> None:
+        grid._grid_row_height = row_height  # type: ignore[attr-defined]
+        grid._grid_icon_size = icon_size  # type: ignore[attr-defined]
+        grid._grid_columns = 5  # type: ignore[attr-defined]
+        grid.setIconSize(icon_size)
+        grid.setCursor(Qt.CursorShape.PointingHandCursor)
+        grid.viewport().installEventFilter(self)
+        self._update_grid_cell_size(grid)
+
+    def _update_grid_cell_size(self, grid: QListWidget) -> None:
+        cols = int(getattr(grid, "_grid_columns", 5))
+        row_h = int(getattr(grid, "_grid_row_height", 130))
+        icon_sz = getattr(grid, "_grid_icon_size", QSize(64, 64))
+        grid.setIconSize(icon_sz)
+        vw = grid.viewport().width()
+        if vw < 80:
+            return
+        s = grid.spacing()
+        cell_w = max(120, (vw - (cols - 1) * s) // cols)
+        grid.setGridSize(QSize(cell_w, row_h))
+        cell = grid.gridSize()
+        if not cell.isValid():
+            return
+        for i in range(grid.count()):
+            it = grid.item(i)
+            if it is not None:
+                it.setSizeHint(cell)
+
+    def eventFilter(self, obj, event) -> bool:
+        if event.type() == QEvent.Type.Resize:
+            for name in ("_tt_grid", "_tb_grid", "_st_grid", "_sv_grid"):
+                g = getattr(self, name, None)
+                if g is not None and g.viewport() is obj:
+                    self._update_grid_cell_size(g)
+                    break
+        return super().eventFilter(obj, event)
+
+    def _selected_grid_item(self, grid: QListWidget) -> dict | None:
+        it = grid.currentItem()
+        if it is None:
+            return None
+        data = it.data(Qt.ItemDataRole.UserRole)
+        return dict(data) if isinstance(data, dict) else None
+
+    def _set_grid_items(self, grid: QListWidget, items: list[dict], build_text) -> None:
+        self._update_grid_cell_size(grid)
+        grid.clear()
+        cell = grid.gridSize()
+        for d in items:
+            it = QListWidgetItem()
+            it.setData(Qt.ItemDataRole.UserRole, d)
+            it.setText(build_text(d))
+            it.setTextAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
+            if cell.isValid():
+                it.setSizeHint(cell)
+            icon, tooltip = self._icon_for_grid_item(d)
+            if icon is not None:
+                it.setIcon(icon)
+            if tooltip:
+                it.setToolTip(tooltip)
+            bg = self._background_for_grid_item(d)
+            if bg is not None:
+                it.setData(Qt.ItemDataRole.BackgroundRole, QBrush(bg))
+            grid.addItem(it)
+        self._update_grid_cell_size(grid)
+
+    def _format_vnd(self, amount: float) -> str:
+        n = int(round(float(amount or 0)))
+        s = f"{n:,}".replace(",", ".")
+        return f"{s} đ"
+
+    def _table_status_label(self, status: str) -> str:
+        status_map = {"empty": "Trống", "playing": "Đang chơi", "maintenance": "Bảo trì"}
+        return status_map.get(status, status)
+
+    def _table_status_color(self, status: str) -> QColor:
+        # soft background tints for cards
+        if status == "playing":
+            return QColor("#fff7d6")  # yellow
+        if status == "maintenance":
+            return QColor("#ffe4e6")  # red
+        return QColor("#e9f9ee")  # green (empty default)
+
+    def _render_table_icon(self, status: str) -> QIcon:
+        # Draw a simple billiards-table icon programmatically.
+        w, h = 64, 64
+        pm = QPixmap(w, h)
+        pm.fill(Qt.GlobalColor.transparent)
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        # Outer frame
+        frame = QColor("#1f2937")
+        felt = QColor("#16a34a") if status == "empty" else QColor("#eab308") if status == "playing" else QColor("#ef4444")
+        p.setPen(QPen(frame, 3))
+        p.setBrush(felt)
+        p.drawRoundedRect(10, 16, 44, 32, 10, 10)
+
+        # Pockets
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#0b1220"))
+        for x, y in [(12, 18), (32, 18), (52, 18), (12, 46), (32, 46), (52, 46)]:
+            p.drawEllipse(x - 3, y - 3, 6, 6)
+
+        # Cue ball
+        p.setBrush(QColor("#ffffff"))
+        p.drawEllipse(26, 30, 10, 10)
+        p.end()
+        return QIcon(pm)
+
+    def _icon_for_grid_item(self, d: dict) -> tuple[QIcon | None, str]:
+        # Services / service types: show stored image if exists
+        img = str(d.get("image_path") or "").strip()
+        if img:
+            pm = QPixmap(resolve_image_path(img))
+            if not pm.isNull():
+                return QIcon(pm), img
+
+        # Tables: fallback to generated billiards-table icon by status
+        if "status" in d and "type_name" in d:
+            status = str(d.get("status") or "empty")
+            return self._render_table_icon(status), ""
+
+        return None, ""
+
+    def _background_for_grid_item(self, d: dict) -> QColor | None:
+        if "status" in d and "type_name" in d:
+            status = str(d.get("status") or "empty")
+            return self._table_status_color(status)
+        return None
+
     def _init_table_types_page(self) -> None:
-        self._crud_table_types = self._replace_page_with_crud("pageTableTypes", "Loại bàn")
+        self._crud_table_types = self._replace_page_with_crud_grid("pageTableTypes", "Loại bàn")
         self._tt_search = get_child(self._crud_table_types, QLineEdit, "lineSearch")
         self._tt_refresh = get_child(self._crud_table_types, QPushButton, "btnRefresh")
         self._tt_add = get_child(self._crud_table_types, QPushButton, "btnAdd")
         self._tt_edit = get_child(self._crud_table_types, QPushButton, "btnEdit")
         self._tt_delete = get_child(self._crud_table_types, QPushButton, "btnDelete")
-        self._tt_table = get_child(self._crud_table_types, QTableView, "tableView")
+        self._tt_grid = get_child(self._crud_table_types, QListWidget, "gridList")
 
         self._tt_refresh.clicked.connect(self._reload_table_types)
         self._tt_add.clicked.connect(self._add_table_type)
         self._tt_edit.clicked.connect(self._edit_table_type)
         self._tt_delete.clicked.connect(self._delete_table_type)
         self._tt_search.textChanged.connect(self._apply_table_types_filter)
+        self._tt_grid.itemDoubleClicked.connect(lambda _: self._edit_table_type())
+        self._wire_grid_five_columns(self._tt_grid, row_height=130, icon_size=QSize(64, 64))
 
         self._reload_table_types()
 
@@ -237,13 +405,18 @@ class MainWindow(QMainWindow):
 
     def _apply_table_types_filter(self) -> None:
         q = self._tt_search.text().strip().lower() if hasattr(self, "_tt_search") else ""
-        rows = []
+        items: list[dict] = []
         for r in self._table_types_cache:
             if q and q not in str(r.get("name", "")).lower():
                 continue
-            rows.append([r["id"], r["name"], r["price_per_hour"]])
-        self._tt_table.setModel(build_model(["ID", "Tên", "Giá/giờ"], rows))
-        self._tt_table.resizeColumnsToContents()
+            items.append(r)
+
+        def build_text(d: dict) -> str:
+            name = str(d.get("name", ""))
+            price = float(d.get("price_per_hour") or 0)
+            return f"{name}\n{self._format_vnd(price)}/giờ"
+
+        self._set_grid_items(self._tt_grid, items, build_text)
 
     def _add_table_type(self) -> None:
         dlg = load_ui("dialog_table_type.ui", self)
@@ -267,15 +440,11 @@ class MainWindow(QMainWindow):
             self._reload_table_types()
 
     def _edit_table_type(self) -> None:
-        row = selected_row_data(self._tt_table)
-        if not row:
+        current = self._selected_grid_item(self._tt_grid)
+        if not current:
             QMessageBox.information(self, "Chọn dòng", "Vui lòng chọn 1 loại bàn để sửa.")
             return
-        type_id = int(row[0])
-
-        current = next((x for x in self._table_types_cache if int(x["id"]) == type_id), None)
-        if current is None:
-            return
+        type_id = int(current["id"])
 
         dlg = load_ui("dialog_table_type.ui", self)
         line_name = get_child(dlg, QLineEdit, "lineName")
@@ -301,11 +470,11 @@ class MainWindow(QMainWindow):
             self._reload_table_types()
 
     def _delete_table_type(self) -> None:
-        row = selected_row_data(self._tt_table)
-        if not row:
+        current = self._selected_grid_item(self._tt_grid)
+        if not current:
             QMessageBox.information(self, "Chọn dòng", "Vui lòng chọn 1 loại bàn để xoá.")
             return
-        type_id = int(row[0])
+        type_id = int(current["id"])
         if QMessageBox.question(self, "Xác nhận", "Xoá loại bàn này?") != QMessageBox.StandardButton.Yes:
             return
         try:
@@ -316,19 +485,21 @@ class MainWindow(QMainWindow):
         self._reload_table_types()
 
     def _init_tables_page(self) -> None:
-        self._crud_tables = self._replace_page_with_crud("pageTables", "Quản lý bàn")
+        self._crud_tables = self._replace_page_with_crud_grid("pageTables", "Quản lý bàn")
         self._tb_search = get_child(self._crud_tables, QLineEdit, "lineSearch")
         self._tb_refresh = get_child(self._crud_tables, QPushButton, "btnRefresh")
         self._tb_add = get_child(self._crud_tables, QPushButton, "btnAdd")
         self._tb_edit = get_child(self._crud_tables, QPushButton, "btnEdit")
         self._tb_delete = get_child(self._crud_tables, QPushButton, "btnDelete")
-        self._tb_table = get_child(self._crud_tables, QTableView, "tableView")
+        self._tb_grid = get_child(self._crud_tables, QListWidget, "gridList")
 
         self._tb_refresh.clicked.connect(self._reload_tables)
         self._tb_add.clicked.connect(self._add_table)
         self._tb_edit.clicked.connect(self._edit_table)
         self._tb_delete.clicked.connect(self._delete_table)
         self._tb_search.textChanged.connect(self._apply_tables_filter)
+        self._tb_grid.itemDoubleClicked.connect(lambda _: self._edit_table())
+        self._wire_grid_five_columns(self._tb_grid, row_height=130, icon_size=QSize(64, 64))
 
         self._reload_tables()
 
@@ -342,15 +513,22 @@ class MainWindow(QMainWindow):
 
     def _apply_tables_filter(self) -> None:
         q = self._tb_search.text().strip().lower() if hasattr(self, "_tb_search") else ""
-        rows = []
+        items: list[dict] = []
         for r in self._tables_cache:
             name = str(r.get("name", ""))
             type_name = str(r.get("type_name", "") or "")
             if q and q not in name.lower() and q not in type_name.lower():
                 continue
-            rows.append([r["id"], name, type_name, r.get("status", "")])
-        self._tb_table.setModel(build_model(["ID", "Tên bàn", "Loại bàn", "Trạng thái"], rows))
-        self._tb_table.resizeColumnsToContents()
+            items.append(r)
+
+        def build_text(d: dict) -> str:
+            name = str(d.get("name", ""))
+            type_name = str(d.get("type_name", "") or "—")
+            status = str(d.get("status", "") or "empty")
+            st = self._table_status_label(status)
+            return f"{name}\n{type_name} • {st}"
+
+        self._set_grid_items(self._tb_grid, items, build_text)
 
     def _open_table_dialog(self, current: dict | None = None) -> tuple[str, int | None, str] | None:
         dlg = load_ui("dialog_table.ui", self)
@@ -410,14 +588,11 @@ class MainWindow(QMainWindow):
         self._reload_tables()
 
     def _edit_table(self) -> None:
-        row = selected_row_data(self._tb_table)
-        if not row:
+        current = self._selected_grid_item(self._tb_grid)
+        if not current:
             QMessageBox.information(self, "Chọn dòng", "Vui lòng chọn 1 bàn để sửa.")
             return
-        table_id = int(row[0])
-        current = next((x for x in self._tables_cache if int(x["id"]) == table_id), None)
-        if current is None:
-            return
+        table_id = int(current["id"])
         try:
             result = self._open_table_dialog(current=current)
         except Exception as e:
@@ -434,11 +609,11 @@ class MainWindow(QMainWindow):
         self._reload_tables()
 
     def _delete_table(self) -> None:
-        row = selected_row_data(self._tb_table)
-        if not row:
+        current = self._selected_grid_item(self._tb_grid)
+        if not current:
             QMessageBox.information(self, "Chọn dòng", "Vui lòng chọn 1 bàn để xoá.")
             return
-        table_id = int(row[0])
+        table_id = int(current["id"])
         if QMessageBox.question(self, "Xác nhận", "Xoá bàn này?") != QMessageBox.StandardButton.Yes:
             return
         try:
@@ -450,19 +625,21 @@ class MainWindow(QMainWindow):
 
     # ---------- Service types ----------
     def _init_service_types_page(self) -> None:
-        self._crud_service_types = self._replace_page_with_crud("pageServiceTypes", "Loại dịch vụ")
+        self._crud_service_types = self._replace_page_with_crud_grid("pageServiceTypes", "Loại dịch vụ")
         self._st_search = get_child(self._crud_service_types, QLineEdit, "lineSearch")
         self._st_refresh = get_child(self._crud_service_types, QPushButton, "btnRefresh")
         self._st_add = get_child(self._crud_service_types, QPushButton, "btnAdd")
         self._st_edit = get_child(self._crud_service_types, QPushButton, "btnEdit")
         self._st_delete = get_child(self._crud_service_types, QPushButton, "btnDelete")
-        self._st_table = get_child(self._crud_service_types, QTableView, "tableView")
+        self._st_grid = get_child(self._crud_service_types, QListWidget, "gridList")
 
         self._st_refresh.clicked.connect(self._reload_service_types)
         self._st_add.clicked.connect(self._add_service_type)
         self._st_edit.clicked.connect(self._edit_service_type)
         self._st_delete.clicked.connect(self._delete_service_type)
         self._st_search.textChanged.connect(self._apply_service_types_filter)
+        self._st_grid.itemDoubleClicked.connect(lambda _: self._edit_service_type())
+        self._wire_grid_five_columns(self._st_grid, row_height=160, icon_size=QSize(96, 96))
 
         self._reload_service_types()
 
@@ -476,68 +653,126 @@ class MainWindow(QMainWindow):
 
     def _apply_service_types_filter(self) -> None:
         q = self._st_search.text().strip().lower() if hasattr(self, "_st_search") else ""
-        rows = []
+        items: list[dict] = []
         for r in self._service_types_cache:
             if q and q not in str(r.get("name", "")).lower():
                 continue
-            rows.append([r["id"], r["name"]])
-        self._st_table.setModel(build_model(["ID", "Tên"], rows))
-        self._st_table.resizeColumnsToContents()
+            items.append(r)
+
+        def build_text(d: dict) -> str:
+            return str(d.get("name", ""))
+
+        self._set_grid_items(self._st_grid, items, build_text)
 
     def _add_service_type(self) -> None:
         dlg = load_ui("dialog_service_type.ui", self)
         line_name = get_child(dlg, QLineEdit, "lineName")
+        line_image = get_child(dlg, QLineEdit, "lineImage")
+        btn_browse = get_child(dlg, QPushButton, "btnBrowseImage")
+        lbl_preview = get_child(dlg, QLabel, "lblPreview")
         buttons = get_child(dlg, QDialogButtonBox, "buttonBox")
         buttons.accepted.connect(dlg.accept)
         buttons.rejected.connect(dlg.reject)
 
+        def pick_image() -> None:
+            path, _ = QFileDialog.getOpenFileName(
+                self,
+                "Chọn ảnh loại dịch vụ",
+                "",
+                "Images (*.png *.jpg *.jpeg *.bmp *.gif *.webp)",
+            )
+            if not path:
+                return
+            rel = store_image(path, "service_types")
+            line_image.setText(rel)
+            abs_path = resolve_image_path(rel)
+            pm = QPixmap(abs_path)
+            if not pm.isNull():
+                lbl_preview.setPixmap(pm.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                lbl_preview.setText("")
+
+        btn_browse.clicked.connect(pick_image)
+
         if isinstance(dlg, QDialog) and dlg.exec() == QDialog.DialogCode.Accepted:
             name = line_name.text().strip()
+            image_path = line_image.text().strip() or None
             if not name:
                 QMessageBox.warning(self, "Thiếu thông tin", "Vui lòng nhập tên loại dịch vụ.")
                 return
             try:
-                self._service_types_repo.create(name)
+                self._service_types_repo.create(name, image_path=image_path)
             except Exception as e:
                 QMessageBox.critical(self, "Lỗi", str(e))
                 return
             self._reload_service_types()
 
     def _edit_service_type(self) -> None:
-        row = selected_row_data(self._st_table)
-        if not row:
+        current = self._selected_grid_item(self._st_grid)
+        if not current:
             QMessageBox.information(self, "Chọn dòng", "Vui lòng chọn 1 loại dịch vụ để sửa.")
             return
-        type_id = int(row[0])
-        current = next((x for x in self._service_types_cache if int(x["id"]) == type_id), None)
-        if current is None:
-            return
+        type_id = int(current["id"])
 
         dlg = load_ui("dialog_service_type.ui", self)
         line_name = get_child(dlg, QLineEdit, "lineName")
+        line_image = get_child(dlg, QLineEdit, "lineImage")
+        btn_browse = get_child(dlg, QPushButton, "btnBrowseImage")
+        lbl_preview = get_child(dlg, QLabel, "lblPreview")
         line_name.setText(str(current.get("name", "")))
+        line_image.setText(str(current.get("image_path", "") or ""))
         buttons = get_child(dlg, QDialogButtonBox, "buttonBox")
         buttons.accepted.connect(dlg.accept)
         buttons.rejected.connect(dlg.reject)
 
+        def sync_preview() -> None:
+            rel = line_image.text().strip()
+            if not rel:
+                lbl_preview.setPixmap(QPixmap())
+                lbl_preview.setText("(xem trước)")
+                return
+            pm = QPixmap(resolve_image_path(rel))
+            if pm.isNull():
+                lbl_preview.setPixmap(QPixmap())
+                lbl_preview.setText("(xem trước)")
+                return
+            lbl_preview.setPixmap(pm.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            lbl_preview.setText("")
+
+        def pick_image() -> None:
+            path, _ = QFileDialog.getOpenFileName(
+                self,
+                "Chọn ảnh loại dịch vụ",
+                "",
+                "Images (*.png *.jpg *.jpeg *.bmp *.gif *.webp)",
+            )
+            if not path:
+                return
+            rel = store_image(path, "service_types")
+            line_image.setText(rel)
+            sync_preview()
+
+        btn_browse.clicked.connect(pick_image)
+        sync_preview()
+
         if isinstance(dlg, QDialog) and dlg.exec() == QDialog.DialogCode.Accepted:
             name = line_name.text().strip()
+            image_path = line_image.text().strip() or None
             if not name:
                 QMessageBox.warning(self, "Thiếu thông tin", "Vui lòng nhập tên loại dịch vụ.")
                 return
             try:
-                self._service_types_repo.update(type_id, name)
+                self._service_types_repo.update(type_id, name, image_path=image_path)
             except Exception as e:
                 QMessageBox.critical(self, "Lỗi", str(e))
                 return
             self._reload_service_types()
 
     def _delete_service_type(self) -> None:
-        row = selected_row_data(self._st_table)
-        if not row:
+        current = self._selected_grid_item(self._st_grid)
+        if not current:
             QMessageBox.information(self, "Chọn dòng", "Vui lòng chọn 1 loại dịch vụ để xoá.")
             return
-        type_id = int(row[0])
+        type_id = int(current["id"])
         if QMessageBox.question(self, "Xác nhận", "Xoá loại dịch vụ này?") != QMessageBox.StandardButton.Yes:
             return
         try:
@@ -549,19 +784,21 @@ class MainWindow(QMainWindow):
 
     # ---------- Services ----------
     def _init_services_page(self) -> None:
-        self._crud_services = self._replace_page_with_crud("pageServices", "Dịch vụ")
+        self._crud_services = self._replace_page_with_crud_grid("pageServices", "Dịch vụ")
         self._sv_search = get_child(self._crud_services, QLineEdit, "lineSearch")
         self._sv_refresh = get_child(self._crud_services, QPushButton, "btnRefresh")
         self._sv_add = get_child(self._crud_services, QPushButton, "btnAdd")
         self._sv_edit = get_child(self._crud_services, QPushButton, "btnEdit")
         self._sv_delete = get_child(self._crud_services, QPushButton, "btnDelete")
-        self._sv_table = get_child(self._crud_services, QTableView, "tableView")
+        self._sv_grid = get_child(self._crud_services, QListWidget, "gridList")
 
         self._sv_refresh.clicked.connect(self._reload_services)
         self._sv_add.clicked.connect(self._add_service)
         self._sv_edit.clicked.connect(self._edit_service)
         self._sv_delete.clicked.connect(self._delete_service)
         self._sv_search.textChanged.connect(self._apply_services_filter)
+        self._sv_grid.itemDoubleClicked.connect(lambda _: self._edit_service())
+        self._wire_grid_five_columns(self._sv_grid, row_height=170, icon_size=QSize(96, 96))
 
         self._reload_services()
 
@@ -575,21 +812,45 @@ class MainWindow(QMainWindow):
 
     def _apply_services_filter(self) -> None:
         q = self._sv_search.text().strip().lower() if hasattr(self, "_sv_search") else ""
-        rows = []
+        items: list[dict] = []
         for r in self._services_cache:
             name = str(r.get("name", ""))
             type_name = str(r.get("type_name", "") or "")
             if q and q not in name.lower() and q not in type_name.lower():
                 continue
-            rows.append([r["id"], name, r.get("price", 0), type_name])
-        self._sv_table.setModel(build_model(["ID", "Tên", "Giá", "Loại"], rows))
-        self._sv_table.resizeColumnsToContents()
+            items.append(r)
 
-    def _open_service_dialog(self, current: dict | None = None) -> tuple[str, float, int | None] | None:
+        def build_text(d: dict) -> str:
+            name = str(d.get("name", ""))
+            type_name = str(d.get("type_name", "") or "—")
+            price = float(d.get("price") or 0)
+            return f"{name}\n{type_name} • {self._format_vnd(price)}"
+
+        self._set_grid_items(self._sv_grid, items, build_text)
+
+    def _apply_image_thumbs(self, view: QTableView, model, image_col: int) -> None:
+        view.setIconSize(QSize(40, 40))
+        view.verticalHeader().setDefaultSectionSize(48)
+        for r in range(model.rowCount()):
+            idx = model.index(r, image_col)
+            rel = str(model.data(idx, Qt.ItemDataRole.DisplayRole) or "").strip()
+            if not rel:
+                continue
+            pm = QPixmap(resolve_image_path(rel))
+            if pm.isNull():
+                continue
+            model.setData(idx, "", Qt.ItemDataRole.DisplayRole)
+            model.setData(idx, rel, Qt.ItemDataRole.ToolTipRole)
+            model.setData(idx, QIcon(pm), Qt.ItemDataRole.DecorationRole)
+
+    def _open_service_dialog(self, current: dict | None = None) -> tuple[str, float, int | None, str | None] | None:
         dlg = load_ui("dialog_service.ui", self)
         line_name = get_child(dlg, QLineEdit, "lineName")
         spin_price = get_child(dlg, QDoubleSpinBox, "spinPrice")
         combo_type = get_child(dlg, QComboBox, "comboType")
+        line_image = get_child(dlg, QLineEdit, "lineImage")
+        btn_browse = get_child(dlg, QPushButton, "btnBrowseImage")
+        lbl_preview = get_child(dlg, QLabel, "lblPreview")
         buttons = get_child(dlg, QDialogButtonBox, "buttonBox")
         buttons.accepted.connect(dlg.accept)
         buttons.rejected.connect(dlg.reject)
@@ -607,15 +868,47 @@ class MainWindow(QMainWindow):
                 idx = combo_type.findData(int(type_id))
                 if idx >= 0:
                     combo_type.setCurrentIndex(idx)
+            line_image.setText(str(current.get("image_path", "") or ""))
+
+        def sync_preview() -> None:
+            rel = line_image.text().strip()
+            if not rel:
+                lbl_preview.setPixmap(QPixmap())
+                lbl_preview.setText("(xem trước)")
+                return
+            pm = QPixmap(resolve_image_path(rel))
+            if pm.isNull():
+                lbl_preview.setPixmap(QPixmap())
+                lbl_preview.setText("(xem trước)")
+                return
+            lbl_preview.setPixmap(pm.scaled(120, 120, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+            lbl_preview.setText("")
+
+        def pick_image() -> None:
+            path, _ = QFileDialog.getOpenFileName(
+                self,
+                "Chọn ảnh dịch vụ",
+                "",
+                "Images (*.png *.jpg *.jpeg *.bmp *.gif *.webp)",
+            )
+            if not path:
+                return
+            rel = store_image(path, "services")
+            line_image.setText(rel)
+            sync_preview()
+
+        btn_browse.clicked.connect(pick_image)
+        sync_preview()
 
         if isinstance(dlg, QDialog) and dlg.exec() == QDialog.DialogCode.Accepted:
             name = line_name.text().strip()
             price = float(spin_price.value())
             type_id = combo_type.currentData()
+            image_path = line_image.text().strip() or None
             if not name:
                 QMessageBox.warning(self, "Thiếu thông tin", "Vui lòng nhập tên dịch vụ.")
                 return None
-            return name, price, (int(type_id) if type_id is not None else None)
+            return name, price, (int(type_id) if type_id is not None else None), image_path
         return None
 
     def _add_service(self) -> None:
@@ -626,23 +919,20 @@ class MainWindow(QMainWindow):
             return
         if not result:
             return
-        name, price, type_id = result
+        name, price, type_id, image_path = result
         try:
-            self._services_repo.create(name, price, type_id)
+            self._services_repo.create(name, price, type_id, image_path=image_path)
         except Exception as e:
             QMessageBox.critical(self, "Lỗi", str(e))
             return
         self._reload_services()
 
     def _edit_service(self) -> None:
-        row = selected_row_data(self._sv_table)
-        if not row:
+        current = self._selected_grid_item(self._sv_grid)
+        if not current:
             QMessageBox.information(self, "Chọn dòng", "Vui lòng chọn 1 dịch vụ để sửa.")
             return
-        service_id = int(row[0])
-        current = next((x for x in self._services_cache if int(x["id"]) == service_id), None)
-        if current is None:
-            return
+        service_id = int(current["id"])
         try:
             result = self._open_service_dialog(current=current)
         except Exception as e:
@@ -650,20 +940,20 @@ class MainWindow(QMainWindow):
             return
         if not result:
             return
-        name, price, type_id = result
+        name, price, type_id, image_path = result
         try:
-            self._services_repo.update(service_id, name, price, type_id)
+            self._services_repo.update(service_id, name, price, type_id, image_path=image_path)
         except Exception as e:
             QMessageBox.critical(self, "Lỗi", str(e))
             return
         self._reload_services()
 
     def _delete_service(self) -> None:
-        row = selected_row_data(self._sv_table)
-        if not row:
+        current = self._selected_grid_item(self._sv_grid)
+        if not current:
             QMessageBox.information(self, "Chọn dòng", "Vui lòng chọn 1 dịch vụ để xoá.")
             return
-        service_id = int(row[0])
+        service_id = int(current["id"])
         if QMessageBox.question(self, "Xác nhận", "Xoá dịch vụ này?") != QMessageBox.StandardButton.Yes:
             return
         try:

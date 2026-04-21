@@ -76,7 +76,8 @@ CREATE TABLE IF NOT EXISTS tables (
 -- Service types
 CREATE TABLE IF NOT EXISTS service_types (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(50) NOT NULL UNIQUE
+  name VARCHAR(50) NOT NULL UNIQUE,
+  image_path VARCHAR(255) NULL
 );
 
 -- Services
@@ -84,6 +85,7 @@ CREATE TABLE IF NOT EXISTS services (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   price FLOAT NOT NULL DEFAULT 0,
+  image_path VARCHAR(255) NULL,
   type_id INT,
   CONSTRAINT fk_services_type FOREIGN KEY (type_id) REFERENCES service_types(id)
     ON UPDATE CASCADE

@@ -82,6 +82,50 @@
       <item row="2" column="1">
        <widget class="QComboBox" name="comboType"/>
       </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="labelImage">
+        <property name="text">
+         <string>Ảnh</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <layout class="QHBoxLayout" name="imageLayout">
+        <item>
+         <widget class="QLineEdit" name="lineImage">
+          <property name="placeholderText">
+           <string>Chọn ảnh...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btnBrowseImage">
+          <property name="text">
+           <string>Chọn</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="4" column="1">
+       <widget class="QLabel" name="lblPreview">
+        <property name="minimumSize">
+         <size>
+          <width>120</width>
+          <height>120</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">QLabel{border:1px dashed #d1d5db;border-radius:12px;background:#f9fafb;}</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+        <property name="text">
+         <string>(xem trước)</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
