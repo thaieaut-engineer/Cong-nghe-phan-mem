@@ -17,6 +17,10 @@ def build_model(headers: list[str], rows: list[list[Any]]) -> QStandardItemModel
         for v in r:
             item = QStandardItem("" if v is None else str(v))
             item.setEditable(False)
+            if isinstance(v, (int, float)):
+                # keep numeric value for sorting, right-align numbers
+                item.setData(v, Qt.ItemDataRole.EditRole)
+                item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             items.append(item)
         model.appendRow(items)
     return model
@@ -27,10 +31,12 @@ def configure_table_view(view: QTableView) -> None:
     view.setSelectionMode(QTableView.SelectionMode.SingleSelection)
     view.setAlternatingRowColors(True)
     view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+    view.setSortingEnabled(True)
     hdr = view.horizontalHeader()
     hdr.setStretchLastSection(True)
     hdr.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
     view.verticalHeader().setVisible(False)
+    view.verticalHeader().setDefaultSectionSize(38)
 
 
 def selected_row_data(view: QTableView) -> list[str] | None:

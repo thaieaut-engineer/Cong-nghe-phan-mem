@@ -379,12 +379,14 @@ class MainWindow(QMainWindow):
     def _init_table_types_page(self) -> None:
         self._crud_table_types = self._replace_page_with_crud_grid("pageTableTypes", "Loại bàn")
         self._tt_search = get_child(self._crud_table_types, QLineEdit, "lineSearch")
+        self._tt_filter = get_child(self._crud_table_types, QComboBox, "comboFilter")
         self._tt_refresh = get_child(self._crud_table_types, QPushButton, "btnRefresh")
         self._tt_add = get_child(self._crud_table_types, QPushButton, "btnAdd")
         self._tt_edit = get_child(self._crud_table_types, QPushButton, "btnEdit")
         self._tt_delete = get_child(self._crud_table_types, QPushButton, "btnDelete")
         self._tt_grid = get_child(self._crud_table_types, QListWidget, "gridList")
 
+        self._tt_filter.setVisible(False)
         self._tt_refresh.clicked.connect(self._reload_table_types)
         self._tt_add.clicked.connect(self._add_table_type)
         self._tt_edit.clicked.connect(self._edit_table_type)
@@ -487,12 +489,14 @@ class MainWindow(QMainWindow):
     def _init_tables_page(self) -> None:
         self._crud_tables = self._replace_page_with_crud_grid("pageTables", "Quản lý bàn")
         self._tb_search = get_child(self._crud_tables, QLineEdit, "lineSearch")
+        self._tb_filter = get_child(self._crud_tables, QComboBox, "comboFilter")
         self._tb_refresh = get_child(self._crud_tables, QPushButton, "btnRefresh")
         self._tb_add = get_child(self._crud_tables, QPushButton, "btnAdd")
         self._tb_edit = get_child(self._crud_tables, QPushButton, "btnEdit")
         self._tb_delete = get_child(self._crud_tables, QPushButton, "btnDelete")
         self._tb_grid = get_child(self._crud_tables, QListWidget, "gridList")
 
+        self._tb_filter.setVisible(False)
         self._tb_refresh.clicked.connect(self._reload_tables)
         self._tb_add.clicked.connect(self._add_table)
         self._tb_edit.clicked.connect(self._edit_table)
@@ -627,12 +631,14 @@ class MainWindow(QMainWindow):
     def _init_service_types_page(self) -> None:
         self._crud_service_types = self._replace_page_with_crud_grid("pageServiceTypes", "Loại dịch vụ")
         self._st_search = get_child(self._crud_service_types, QLineEdit, "lineSearch")
+        self._st_filter = get_child(self._crud_service_types, QComboBox, "comboFilter")
         self._st_refresh = get_child(self._crud_service_types, QPushButton, "btnRefresh")
         self._st_add = get_child(self._crud_service_types, QPushButton, "btnAdd")
         self._st_edit = get_child(self._crud_service_types, QPushButton, "btnEdit")
         self._st_delete = get_child(self._crud_service_types, QPushButton, "btnDelete")
         self._st_grid = get_child(self._crud_service_types, QListWidget, "gridList")
 
+        self._st_filter.setVisible(False)
         self._st_refresh.clicked.connect(self._reload_service_types)
         self._st_add.clicked.connect(self._add_service_type)
         self._st_edit.clicked.connect(self._edit_service_type)
@@ -786,6 +792,7 @@ class MainWindow(QMainWindow):
     def _init_services_page(self) -> None:
         self._crud_services = self._replace_page_with_crud_grid("pageServices", "Dịch vụ")
         self._sv_search = get_child(self._crud_services, QLineEdit, "lineSearch")
+        self._sv_filter = get_child(self._crud_services, QComboBox, "comboFilter")
         self._sv_refresh = get_child(self._crud_services, QPushButton, "btnRefresh")
         self._sv_add = get_child(self._crud_services, QPushButton, "btnAdd")
         self._sv_edit = get_child(self._crud_services, QPushButton, "btnEdit")
@@ -797,6 +804,7 @@ class MainWindow(QMainWindow):
         self._sv_edit.clicked.connect(self._edit_service)
         self._sv_delete.clicked.connect(self._delete_service)
         self._sv_search.textChanged.connect(self._apply_services_filter)
+        self._sv_filter.currentIndexChanged.connect(self._apply_services_filter)
         self._sv_grid.itemDoubleClicked.connect(lambda _: self._edit_service())
         self._wire_grid_five_columns(self._sv_grid, row_height=170, icon_size=QSize(96, 96))
 
@@ -808,14 +816,28 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Lỗi DB", str(e))
             return
+        # build filter: service types
+        try:
+            types = self._service_types_repo.list_all()
+        except Exception:
+            types = []
+        self._sv_filter.blockSignals(True)
+        self._sv_filter.clear()
+        self._sv_filter.addItem("Tất cả loại", None)
+        for t in types:
+            self._sv_filter.addItem(str(t.get("name", "")), int(t["id"]))
+        self._sv_filter.blockSignals(False)
         self._apply_services_filter()
 
     def _apply_services_filter(self) -> None:
         q = self._sv_search.text().strip().lower() if hasattr(self, "_sv_search") else ""
+        type_id = self._sv_filter.currentData() if hasattr(self, "_sv_filter") else None
         items: list[dict] = []
         for r in self._services_cache:
             name = str(r.get("name", ""))
             type_name = str(r.get("type_name", "") or "")
+            if type_id is not None and int(r.get("type_id") or 0) != int(type_id):
+                continue
             if q and q not in name.lower() and q not in type_name.lower():
                 continue
             items.append(r)
@@ -973,11 +995,16 @@ class MainWindow(QMainWindow):
         self._rl_delete = get_child(self._crud_roles, QPushButton, "btnDelete")
         self._rl_table = get_child(self._crud_roles, QTableView, "tableView")
 
+        self._rl_search.setPlaceholderText("Tìm theo tên chức vụ...")
+        self._rl_edit.setEnabled(False)
+        self._rl_delete.setEnabled(False)
+
         self._rl_refresh.clicked.connect(self._reload_roles)
         self._rl_add.clicked.connect(self._add_role)
         self._rl_edit.clicked.connect(self._edit_role)
         self._rl_delete.clicked.connect(self._delete_role)
         self._rl_search.textChanged.connect(self._apply_roles_filter)
+        self._rl_table.doubleClicked.connect(lambda _: self._edit_role())
 
         self._reload_roles()
 
@@ -992,12 +1019,23 @@ class MainWindow(QMainWindow):
     def _apply_roles_filter(self) -> None:
         q = self._rl_search.text().strip().lower() if hasattr(self, "_rl_search") else ""
         rows = []
+        hidden_system_roles = {"admin", "user"}
         for r in self._roles_cache:
+            if str(r.get("name", "")).strip().lower() in hidden_system_roles:
+                continue
             if q and q not in str(r.get("name", "")).lower():
                 continue
-            rows.append([r["id"], r["name"], float(r.get("base_salary") or 0)])
+            base_salary = float(r.get("base_salary") or 0)
+            rows.append([r["id"], r["name"], self._format_vnd(base_salary)])
         self._rl_table.setModel(build_model(["ID", "Tên", "Lương cơ bản"], rows))
         self._rl_table.resizeColumnsToContents()
+
+        sel = self._rl_table.selectionModel()
+        if sel is not None:
+            sel.selectionChanged.connect(lambda *_: self._rl_edit.setEnabled(sel.hasSelection()))
+            sel.selectionChanged.connect(lambda *_: self._rl_delete.setEnabled(sel.hasSelection()))
+        self._rl_edit.setEnabled(sel.hasSelection() if sel is not None else False)
+        self._rl_delete.setEnabled(sel.hasSelection() if sel is not None else False)
 
     def _add_role(self) -> None:
         dlg = load_ui("dialog_role.ui", self)
@@ -1077,11 +1115,16 @@ class MainWindow(QMainWindow):
         self._ep_delete = get_child(self._crud_employees, QPushButton, "btnDelete")
         self._ep_table = get_child(self._crud_employees, QTableView, "tableView")
 
+        self._ep_search.setPlaceholderText("Tìm theo tên, SĐT, chức vụ...")
+        self._ep_edit.setEnabled(False)
+        self._ep_delete.setEnabled(False)
+
         self._ep_refresh.clicked.connect(self._reload_employees)
         self._ep_add.clicked.connect(self._add_employee)
         self._ep_edit.clicked.connect(self._edit_employee)
         self._ep_delete.clicked.connect(self._delete_employee)
         self._ep_search.textChanged.connect(self._apply_employees_filter)
+        self._ep_table.doubleClicked.connect(lambda _: self._edit_employee())
 
         self._reload_employees()
 
@@ -1102,9 +1145,17 @@ class MainWindow(QMainWindow):
             role_name = str(r.get("role_name", "") or "")
             if q and q not in name.lower() and q not in phone.lower() and q not in role_name.lower():
                 continue
-            rows.append([r["id"], name, phone, r.get("salary", 0), role_name])
+            salary = float(r.get("salary") or 0)
+            rows.append([r["id"], name, phone, self._format_vnd(salary), role_name])
         self._ep_table.setModel(build_model(["ID", "Họ tên", "SĐT", "Lương", "Chức vụ"], rows))
         self._ep_table.resizeColumnsToContents()
+
+        sel = self._ep_table.selectionModel()
+        if sel is not None:
+            sel.selectionChanged.connect(lambda *_: self._ep_edit.setEnabled(sel.hasSelection()))
+            sel.selectionChanged.connect(lambda *_: self._ep_delete.setEnabled(sel.hasSelection()))
+        self._ep_edit.setEnabled(sel.hasSelection() if sel is not None else False)
+        self._ep_delete.setEnabled(sel.hasSelection() if sel is not None else False)
 
     def _open_employee_dialog(self, current: dict | None = None) -> tuple[str, str | None, float, int | None] | None:
         dlg = load_ui("dialog_employee.ui", self)
@@ -1242,11 +1293,16 @@ class MainWindow(QMainWindow):
         self._sf_delete = get_child(self._crud_shifts, QPushButton, "btnDelete")
         self._sf_table = get_child(self._crud_shifts, QTableView, "tableView")
 
+        self._sf_search.setPlaceholderText("Tìm theo tên ca...")
+        self._sf_edit.setEnabled(False)
+        self._sf_delete.setEnabled(False)
+
         self._sf_refresh.clicked.connect(self._reload_shifts)
         self._sf_add.clicked.connect(self._add_shift)
         self._sf_edit.clicked.connect(self._edit_shift)
         self._sf_delete.clicked.connect(self._delete_shift)
         self._sf_search.textChanged.connect(self._apply_shifts_filter)
+        self._sf_table.doubleClicked.connect(lambda _: self._edit_shift())
 
         self._reload_shifts()
 
@@ -1276,6 +1332,13 @@ class MainWindow(QMainWindow):
             )
         self._sf_table.setModel(build_model(["ID", "Tên ca", "Bắt đầu", "Kết thúc", "Hệ số"], rows))
         self._sf_table.resizeColumnsToContents()
+
+        sel = self._sf_table.selectionModel()
+        if sel is not None:
+            sel.selectionChanged.connect(lambda *_: self._sf_edit.setEnabled(sel.hasSelection()))
+            sel.selectionChanged.connect(lambda *_: self._sf_delete.setEnabled(sel.hasSelection()))
+        self._sf_edit.setEnabled(sel.hasSelection() if sel is not None else False)
+        self._sf_delete.setEnabled(sel.hasSelection() if sel is not None else False)
 
     def _open_shift_dialog(self, current: dict | None = None) -> tuple[str, str, str, float] | None:
         dlg = load_ui("dialog_shift.ui", self)
@@ -1377,11 +1440,16 @@ class MainWindow(QMainWindow):
         self._bk_delete = get_child(self._crud_bookings, QPushButton, "btnDelete")
         self._bk_table = get_child(self._crud_bookings, QTableView, "tableView")
 
+        self._bk_search.setPlaceholderText("Tìm theo bàn, tên khách, SĐT...")
+        self._bk_edit.setEnabled(False)
+        self._bk_delete.setEnabled(False)
+
         self._bk_refresh.clicked.connect(self._reload_bookings)
         self._bk_add.clicked.connect(self._add_booking)
         self._bk_edit.clicked.connect(self._edit_booking)
         self._bk_delete.clicked.connect(self._delete_booking)
         self._bk_search.textChanged.connect(self._apply_bookings_filter)
+        self._bk_table.doubleClicked.connect(lambda _: self._edit_booking())
 
         self._reload_bookings()
 
@@ -1414,6 +1482,13 @@ class MainWindow(QMainWindow):
             )
         self._bk_table.setModel(build_model(["ID", "Bàn", "Khách", "SĐT", "Bắt đầu", "Kết thúc"], rows))
         self._bk_table.resizeColumnsToContents()
+
+        sel = self._bk_table.selectionModel()
+        if sel is not None:
+            sel.selectionChanged.connect(lambda *_: self._bk_edit.setEnabled(sel.hasSelection()))
+            sel.selectionChanged.connect(lambda *_: self._bk_delete.setEnabled(sel.hasSelection()))
+        self._bk_edit.setEnabled(sel.hasSelection() if sel is not None else False)
+        self._bk_delete.setEnabled(sel.hasSelection() if sel is not None else False)
 
     def _open_booking_dialog(self, current: dict | None = None) -> tuple[int, str, str | None, str, str, str | None] | None:
         dlg = load_ui("dialog_booking.ui", self)
@@ -1700,7 +1775,9 @@ class MainWindow(QMainWindow):
             return
 
         dlg = load_ui("dialog_session_service.ui", self)
+        combo_type = get_child(dlg, QComboBox, "comboServiceType")
         combo_sv = get_child(dlg, QComboBox, "comboService")
+        lbl_preview = get_child(dlg, QLabel, "lblServicePreview")
         spin_qty = get_child(dlg, QSpinBox, "spinQty")
         spin_unit = get_child(dlg, QDoubleSpinBox, "spinUnitPrice")
         buttons = get_child(dlg, QDialogButtonBox, "buttonBox")
@@ -1711,19 +1788,51 @@ class MainWindow(QMainWindow):
         if not services:
             QMessageBox.information(self, "Chưa có dịch vụ", "Bạn cần tạo dịch vụ trước.")
             return
-        combo_sv.clear()
-        for s in services:
-            combo_sv.addItem(f"{s['name']} ({s.get('price',0)}đ)", (int(s["id"]), float(s.get("price", 0) or 0)))
+        types = self._service_types_repo.list_all()
+        combo_type.clear()
+        combo_type.addItem("Tất cả loại", None)
+        for t in types:
+            combo_type.addItem(str(t.get("name", "")), int(t["id"]))
+
+        def fill_services() -> None:
+            tid = combo_type.currentData()
+            combo_sv.blockSignals(True)
+            combo_sv.clear()
+            combo_sv.setIconSize(QSize(32, 32))
+            for s in services:
+                if tid is not None and int(s.get("type_id") or 0) != int(tid):
+                    continue
+                rel = str(s.get("image_path") or "").strip()
+                combo_sv.addItem(
+                    f"{s['name']} ({self._format_vnd(float(s.get('price', 0) or 0))})",
+                    (int(s["id"]), float(s.get("price", 0) or 0), rel),
+                )
+                idx = combo_sv.count() - 1
+                if rel:
+                    pm = QPixmap(resolve_image_path(rel))
+                    if not pm.isNull():
+                        combo_sv.setItemIcon(idx, QIcon(pm))
+            combo_sv.blockSignals(False)
+            sync_price()
 
         def sync_price() -> None:
-            _, price = combo_sv.currentData()
+            _, price, rel = combo_sv.currentData()
             spin_unit.setValue(float(price))
+            if rel:
+                pm = QPixmap(resolve_image_path(rel))
+                if not pm.isNull():
+                    lbl_preview.setPixmap(pm.scaled(96, 96, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                    lbl_preview.setText("")
+                    return
+            lbl_preview.setPixmap(QPixmap())
+            lbl_preview.setText("(ảnh)")
 
+        combo_type.currentIndexChanged.connect(lambda _: fill_services())
         combo_sv.currentIndexChanged.connect(sync_price)
-        sync_price()
+        fill_services()
 
         if isinstance(dlg, QDialog) and dlg.exec() == QDialog.DialogCode.Accepted:
-            service_id, _ = combo_sv.currentData()
+            service_id, _, _ = combo_sv.currentData()
             qty = int(spin_qty.value())
             unit = float(spin_unit.value())
             try:
@@ -1746,7 +1855,9 @@ class MainWindow(QMainWindow):
 
     def _add_service_to_session_with_id(self, session_id: int) -> None:
         dlg = load_ui("dialog_session_service.ui", self)
+        combo_type = get_child(dlg, QComboBox, "comboServiceType")
         combo_sv = get_child(dlg, QComboBox, "comboService")
+        lbl_preview = get_child(dlg, QLabel, "lblServicePreview")
         spin_qty = get_child(dlg, QSpinBox, "spinQty")
         spin_unit = get_child(dlg, QDoubleSpinBox, "spinUnitPrice")
         buttons = get_child(dlg, QDialogButtonBox, "buttonBox")
@@ -1757,19 +1868,51 @@ class MainWindow(QMainWindow):
         if not services:
             QMessageBox.information(self, "Chưa có dịch vụ", "Bạn cần tạo dịch vụ trước.")
             return
-        combo_sv.clear()
-        for s in services:
-            combo_sv.addItem(f"{s['name']} ({s.get('price',0)}đ)", (int(s["id"]), float(s.get("price", 0) or 0)))
+        types = self._service_types_repo.list_all()
+        combo_type.clear()
+        combo_type.addItem("Tất cả loại", None)
+        for t in types:
+            combo_type.addItem(str(t.get("name", "")), int(t["id"]))
+
+        def fill_services() -> None:
+            tid = combo_type.currentData()
+            combo_sv.blockSignals(True)
+            combo_sv.clear()
+            combo_sv.setIconSize(QSize(32, 32))
+            for s in services:
+                if tid is not None and int(s.get("type_id") or 0) != int(tid):
+                    continue
+                rel = str(s.get("image_path") or "").strip()
+                combo_sv.addItem(
+                    f"{s['name']} ({self._format_vnd(float(s.get('price', 0) or 0))})",
+                    (int(s["id"]), float(s.get("price", 0) or 0), rel),
+                )
+                idx = combo_sv.count() - 1
+                if rel:
+                    pm = QPixmap(resolve_image_path(rel))
+                    if not pm.isNull():
+                        combo_sv.setItemIcon(idx, QIcon(pm))
+            combo_sv.blockSignals(False)
+            sync_price()
 
         def sync_price() -> None:
-            _, price = combo_sv.currentData()
+            _, price, rel = combo_sv.currentData()
             spin_unit.setValue(float(price))
+            if rel:
+                pm = QPixmap(resolve_image_path(rel))
+                if not pm.isNull():
+                    lbl_preview.setPixmap(pm.scaled(96, 96, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                    lbl_preview.setText("")
+                    return
+            lbl_preview.setPixmap(QPixmap())
+            lbl_preview.setText("(ảnh)")
 
+        combo_type.currentIndexChanged.connect(lambda _: fill_services())
         combo_sv.currentIndexChanged.connect(sync_price)
-        sync_price()
+        fill_services()
 
         if isinstance(dlg, QDialog) and dlg.exec() == QDialog.DialogCode.Accepted:
-            service_id, _ = combo_sv.currentData()
+            service_id, _, _ = combo_sv.currentData()
             qty = int(spin_qty.value())
             unit = float(spin_unit.value())
             try:
@@ -1794,10 +1937,13 @@ class MainWindow(QMainWindow):
         self._iv_add.setEnabled(False)
         self._iv_delete.setEnabled(False)
         self._iv_export.setText("Xuất PDF")
+        self._iv_export.setEnabled(False)
+        self._iv_search.setPlaceholderText("Tìm theo mã hoá đơn / tên bàn...")
 
         self._iv_refresh.clicked.connect(self._reload_invoices)
         self._iv_export.clicked.connect(self._export_invoice_pdf)
         self._iv_search.textChanged.connect(self._apply_invoices_filter)
+        self._iv_table.doubleClicked.connect(lambda _: self._export_invoice_pdf())
 
         self._reload_invoices()
 
@@ -1816,9 +1962,15 @@ class MainWindow(QMainWindow):
             table_name = str(r.get("table_name", "") or "")
             if q and q not in table_name.lower() and q not in str(r.get("id", "")).lower():
                 continue
-            rows.append([r["id"], r.get("session_id", ""), table_name, r.get("total", 0), str(r.get("created_at", ""))])
+            total = float(r.get("total") or 0)
+            rows.append([r["id"], r.get("session_id", ""), table_name, self._format_vnd(total), str(r.get("created_at", ""))])
         self._iv_table.setModel(build_model(["ID", "Phiên", "Bàn", "Tổng", "Tạo lúc"], rows))
         self._iv_table.resizeColumnsToContents()
+
+        sel = self._iv_table.selectionModel()
+        if sel is not None:
+            sel.selectionChanged.connect(lambda *_: self._iv_export.setEnabled(sel.hasSelection()))
+        self._iv_export.setEnabled(sel.hasSelection() if sel is not None else False)
 
     def _export_invoice_pdf(self) -> None:
         row = selected_row_data(self._iv_table)
@@ -1858,6 +2010,7 @@ class MainWindow(QMainWindow):
         self._stt_add.setEnabled(False)
         self._stt_delete.setEnabled(False)
         self._stt_edit.setText("Top dịch vụ")
+        self._stt_table.doubleClicked.connect(lambda _: self._show_top_services())
 
         self._stt_refresh.clicked.connect(self._reload_stats_revenue)
         self._stt_edit.clicked.connect(self._show_top_services)
@@ -1882,7 +2035,8 @@ class MainWindow(QMainWindow):
             day = str(r.get("day", ""))
             if q and q not in day.lower():
                 continue
-            rows.append([day, r.get("revenue", 0), r.get("invoices", 0)])
+            revenue = float(r.get("revenue") or 0)
+            rows.append([day, self._format_vnd(revenue), r.get("invoices", 0)])
         self._stt_table.setModel(build_model(["Ngày", "Doanh thu", "Số HĐ"], rows))
         self._stt_table.resizeColumnsToContents()
 
@@ -1892,7 +2046,10 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Lỗi DB", str(e))
             return
-        data = [[r.get("service_name", ""), r.get("qty", 0), r.get("amount", 0)] for r in rows]
+        data = []
+        for r in rows:
+            amount = float(r.get("amount") or 0)
+            data.append([r.get("service_name", ""), r.get("qty", 0), self._format_vnd(amount)])
         self._stt_table.setModel(build_model(["Dịch vụ", "SL", "Doanh thu"], data))
         self._stt_table.resizeColumnsToContents()
 
@@ -1908,12 +2065,16 @@ class MainWindow(QMainWindow):
 
         self._us_add.setText("Thêm TK")
         self._us_edit.setText("Đổi quyền")
+        self._us_search.setPlaceholderText("Tìm theo username / chức vụ...")
+        self._us_edit.setEnabled(False)
+        self._us_delete.setEnabled(False)
 
         self._us_refresh.clicked.connect(self._reload_users)
         self._us_add.clicked.connect(self._add_user_admin)
         self._us_edit.clicked.connect(self._edit_user_role)
         self._us_delete.clicked.connect(self._delete_user_admin)
         self._us_search.textChanged.connect(self._apply_users_filter)
+        self._us_table.doubleClicked.connect(lambda _: self._edit_user_role())
         self._reload_users()
 
     def _reload_users(self) -> None:
@@ -1935,6 +2096,13 @@ class MainWindow(QMainWindow):
             rows.append([r["id"], un, rn])
         self._us_table.setModel(build_model(["ID", "Username", "Chức vụ"], rows))
         self._us_table.resizeColumnsToContents()
+
+        sel = self._us_table.selectionModel()
+        if sel is not None:
+            sel.selectionChanged.connect(lambda *_: self._us_edit.setEnabled(sel.hasSelection()))
+            sel.selectionChanged.connect(lambda *_: self._us_delete.setEnabled(sel.hasSelection()))
+        self._us_edit.setEnabled(sel.hasSelection() if sel is not None else False)
+        self._us_delete.setEnabled(sel.hasSelection() if sel is not None else False)
 
     def _add_user_admin(self) -> None:
         dlg = load_ui("dialog_register.ui", self)

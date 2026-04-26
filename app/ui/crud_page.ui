@@ -21,7 +21,21 @@
    <item>
     <widget class="QFrame" name="card" native="true">
      <property name="styleSheet">
-      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #d4e4f7;border-radius:16px;} QLabel#lblTitle{font-size:18px;font-weight:700;color:#1e3a5f;} QLineEdit{padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;} QLineEdit:focus{border:1px solid #4293e6;} QPushButton{padding:8px 10px;border-radius:10px;border:1px solid #d1d5db;background:#f9fafb;} QPushButton:hover{background:#f3f4f6;} QPushButton#btnAdd{background:#4293e6;border:none;color:white;font-weight:600;} QPushButton#btnAdd:hover{background:#3a8adb;} QPushButton#btnAdd:pressed{background:#2f7bc8;} QTableView{border:1px solid #d4e4f7;border-radius:12px;}</string>
+      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;}
+QLabel#lblTitle{font-size:18px;font-weight:800;color:#0f172a;}
+QLineEdit{padding:9px 12px;border:1px solid #e5e7eb;border-radius:12px;background:#ffffff;color:#0f172a;}
+QLineEdit:focus{border:1px solid #3b82f6;}
+QPushButton{padding:9px 12px;border-radius:12px;border:1px solid #e5e7eb;background:#ffffff;color:#0f172a;}
+QPushButton:hover{background:#f8fafc;border-color:#cbd5e1;}
+QPushButton:pressed{background:#f1f5f9;}
+QPushButton:disabled{background:#f8fafc;color:#94a3b8;border-color:#e5e7eb;}
+QPushButton#btnAdd{background:#3b82f6;border:1px solid #3b82f6;color:white;font-weight:700;}
+QPushButton#btnAdd:hover{background:#2563eb;border-color:#2563eb;}
+QPushButton#btnAdd:pressed{background:#1d4ed8;border-color:#1d4ed8;}
+QTableView{border:1px solid #e5e7eb;border-radius:14px;background:#ffffff;gridline-color:#eef2f7;selection-background-color:#dbeafe;selection-color:#0f172a;outline:0;}
+QHeaderView::section{background:#f8fafc;color:#334155;padding:10px;border:none;border-bottom:1px solid #e5e7eb;font-weight:700;}
+QTableView::item{padding:6px;border-bottom:1px solid #f1f5f9;}
+QTableView::item:hover{background:#f8fafc;}</string>
      </property>
      <layout class="QVBoxLayout" name="cardLayout">
       <property name="leftMargin">

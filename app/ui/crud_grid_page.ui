@@ -21,7 +21,24 @@
    <item>
     <widget class="QFrame" name="card" native="true">
      <property name="styleSheet">
-      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #d4e4f7;border-radius:16px;} QLabel#lblTitle{font-size:18px;font-weight:700;color:#1e3a5f;} QLineEdit{padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;} QLineEdit:focus{border:1px solid #4293e6;} QPushButton{padding:8px 10px;border-radius:10px;border:1px solid #d1d5db;background:#f9fafb;} QPushButton:hover{background:#eef6ff;border-color:#93c5fd;} QPushButton:pressed{background:#dbeafe;} QPushButton#btnAdd{background:#4293e6;border:none;color:white;font-weight:600;} QPushButton#btnAdd:hover{background:#3a8adb;} QPushButton#btnAdd:pressed{background:#2f7bc8;} QListWidget{border:1px solid #d4e4f7;border-radius:12px;background:#f1f5f9;outline:0;} QListWidget::item{background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:10px;margin:8px;color:#1e3a5f;} QListWidget::item:hover{border:2px solid #60a5fa;} QListWidget::item:selected{background:qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #ffffff,stop:1 #e0f2fe);border:2px solid #4293e6;color:#0f3558;} QListWidget::item:selected:hover{border:2px solid #2563eb;background:qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #f0f9ff,stop:1 #dbeafe);}</string>
+      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;}
+QLabel#lblTitle{font-size:18px;font-weight:800;color:#0f172a;}
+QLineEdit{padding:9px 12px;border:1px solid #e5e7eb;border-radius:12px;background:#ffffff;color:#0f172a;}
+QLineEdit:focus{border:1px solid #3b82f6;}
+QComboBox{padding:9px 12px;border:1px solid #e5e7eb;border-radius:12px;background:#ffffff;color:#0f172a;}
+QComboBox:focus{border:1px solid #3b82f6;}
+QPushButton{padding:9px 12px;border-radius:12px;border:1px solid #e5e7eb;background:#ffffff;color:#0f172a;}
+QPushButton:hover{background:#f8fafc;border-color:#cbd5e1;}
+QPushButton:pressed{background:#f1f5f9;}
+QPushButton:disabled{background:#f8fafc;color:#94a3b8;border-color:#e5e7eb;}
+QPushButton#btnAdd{background:#3b82f6;border:1px solid #3b82f6;color:white;font-weight:700;}
+QPushButton#btnAdd:hover{background:#2563eb;border-color:#2563eb;}
+QPushButton#btnAdd:pressed{background:#1d4ed8;border-color:#1d4ed8;}
+QListWidget{border:1px solid #e5e7eb;border-radius:14px;background:#f8fafc;outline:0;}
+QListWidget::item{background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;padding:12px;margin:8px;color:#0f172a;}
+QListWidget::item:hover{border:1px solid #93c5fd;background:#f8fafc;}
+QListWidget::item:selected{background:#dbeafe;border:1px solid #3b82f6;color:#0f172a;}
+QListWidget::item:selected:hover{background:#bfdbfe;border:1px solid #2563eb;}</string>
      </property>
      <layout class="QVBoxLayout" name="cardLayout">
       <property name="leftMargin">
@@ -58,6 +75,16 @@
           </property>
          </widget>
         </item>
+       <item>
+        <widget class="QComboBox" name="comboFilter">
+         <property name="minimumSize">
+          <size>
+           <width>220</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
+       </item>
         <item>
          <widget class="QPushButton" name="btnRefresh">
           <property name="text">
