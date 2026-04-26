@@ -92,6 +92,16 @@
       <item row="3" column="1">
        <widget class="QComboBox" name="comboRole"/>
       </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="labelShift">
+        <property name="text">
+         <string>Ca làm</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="QComboBox" name="comboShift"/>
+      </item>
      </layout>
     </widget>
    </item>

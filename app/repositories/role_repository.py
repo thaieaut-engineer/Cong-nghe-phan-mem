@@ -8,13 +8,16 @@ class RoleRepository:
         self._db = db
 
     def list_all(self) -> list[dict]:
-        return self._db.fetch_all("SELECT id, name FROM roles ORDER BY id DESC")
+        return self._db.fetch_all("SELECT id, name, base_salary FROM roles ORDER BY id DESC")
 
-    def create(self, name: str) -> int:
-        return self._db.execute("INSERT INTO roles(name) VALUES(%s)", (name,))
+    def create(self, name: str, base_salary: float = 0) -> int:
+        return self._db.execute("INSERT INTO roles(name, base_salary) VALUES(%s,%s)", (name, float(base_salary)))
 
-    def update(self, role_id: int, name: str) -> int:
-        self._db.execute("UPDATE roles SET name=%s WHERE id=%s", (name, role_id))
+    def update(self, role_id: int, name: str, base_salary: float = 0) -> int:
+        self._db.execute(
+            "UPDATE roles SET name=%s, base_salary=%s WHERE id=%s",
+            (name, float(base_salary), role_id),
+        )
         return role_id
 
     def delete(self, role_id: int) -> None:

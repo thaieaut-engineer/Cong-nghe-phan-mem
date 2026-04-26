@@ -9,19 +9,19 @@ class ShiftRepository:
 
     def list_all(self) -> list[dict]:
         return self._db.fetch_all(
-            "SELECT id, name, start_time, end_time FROM shifts ORDER BY id DESC"
+            "SELECT id, name, start_time, end_time, salary_factor FROM shifts ORDER BY id DESC"
         )
 
-    def create(self, name: str, start_time: str, end_time: str) -> int:
+    def create(self, name: str, start_time: str, end_time: str, salary_factor: float = 1) -> int:
         return self._db.execute(
-            "INSERT INTO shifts(name, start_time, end_time) VALUES(%s,%s,%s)",
-            (name, start_time, end_time),
+            "INSERT INTO shifts(name, start_time, end_time, salary_factor) VALUES(%s,%s,%s,%s)",
+            (name, start_time, end_time, float(salary_factor)),
         )
 
-    def update(self, shift_id: int, name: str, start_time: str, end_time: str) -> int:
+    def update(self, shift_id: int, name: str, start_time: str, end_time: str, salary_factor: float = 1) -> int:
         self._db.execute(
-            "UPDATE shifts SET name=%s, start_time=%s, end_time=%s WHERE id=%s",
-            (name, start_time, end_time, shift_id),
+            "UPDATE shifts SET name=%s, start_time=%s, end_time=%s, salary_factor=%s WHERE id=%s",
+            (name, start_time, end_time, float(salary_factor), shift_id),
         )
         return shift_id
 

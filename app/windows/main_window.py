@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QEvent, QSize, Qt, Slot
+from PySide6.QtCore import QEvent, QSize, Qt, Slot, QTime
 from PySide6.QtGui import QBrush, QColor, QIcon, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -995,24 +995,26 @@ class MainWindow(QMainWindow):
         for r in self._roles_cache:
             if q and q not in str(r.get("name", "")).lower():
                 continue
-            rows.append([r["id"], r["name"]])
-        self._rl_table.setModel(build_model(["ID", "Tên"], rows))
+            rows.append([r["id"], r["name"], float(r.get("base_salary") or 0)])
+        self._rl_table.setModel(build_model(["ID", "Tên", "Lương cơ bản"], rows))
         self._rl_table.resizeColumnsToContents()
 
     def _add_role(self) -> None:
         dlg = load_ui("dialog_role.ui", self)
         line_name = get_child(dlg, QLineEdit, "lineName")
+        spin_base = get_child(dlg, QDoubleSpinBox, "spinBaseSalary")
         buttons = get_child(dlg, QDialogButtonBox, "buttonBox")
         buttons.accepted.connect(dlg.accept)
         buttons.rejected.connect(dlg.reject)
 
         if isinstance(dlg, QDialog) and dlg.exec() == QDialog.DialogCode.Accepted:
             name = line_name.text().strip()
+            base_salary = float(spin_base.value())
             if not name:
                 QMessageBox.warning(self, "Thiếu thông tin", "Vui lòng nhập tên chức vụ.")
                 return
             try:
-                self._roles_repo.create(name)
+                self._roles_repo.create(name, base_salary)
             except Exception as e:
                 QMessageBox.critical(self, "Lỗi", str(e))
                 return
@@ -1030,18 +1032,21 @@ class MainWindow(QMainWindow):
 
         dlg = load_ui("dialog_role.ui", self)
         line_name = get_child(dlg, QLineEdit, "lineName")
+        spin_base = get_child(dlg, QDoubleSpinBox, "spinBaseSalary")
         line_name.setText(str(current.get("name", "")))
+        spin_base.setValue(float(current.get("base_salary") or 0))
         buttons = get_child(dlg, QDialogButtonBox, "buttonBox")
         buttons.accepted.connect(dlg.accept)
         buttons.rejected.connect(dlg.reject)
 
         if isinstance(dlg, QDialog) and dlg.exec() == QDialog.DialogCode.Accepted:
             name = line_name.text().strip()
+            base_salary = float(spin_base.value())
             if not name:
                 QMessageBox.warning(self, "Thiếu thông tin", "Vui lòng nhập tên chức vụ.")
                 return
             try:
-                self._roles_repo.update(role_id, name)
+                self._roles_repo.update(role_id, name, base_salary)
             except Exception as e:
                 QMessageBox.critical(self, "Lỗi", str(e))
                 return
@@ -1107,14 +1112,38 @@ class MainWindow(QMainWindow):
         line_phone = get_child(dlg, QLineEdit, "linePhone")
         spin_salary = get_child(dlg, QDoubleSpinBox, "spinSalary")
         combo_role = get_child(dlg, QComboBox, "comboRole")
+        combo_shift = get_child(dlg, QComboBox, "comboShift")
         buttons = get_child(dlg, QDialogButtonBox, "buttonBox")
         buttons.accepted.connect(dlg.accept)
         buttons.rejected.connect(dlg.reject)
 
         combo_role.clear()
         combo_role.addItem("-- Chọn chức vụ --", None)
-        for r in self._roles_repo.list_all():
-            combo_role.addItem(str(r["name"]), int(r["id"]))
+        roles = self._roles_repo.list_all()
+        for r in roles:
+            base = float(r.get("base_salary") or 0)
+            combo_role.addItem(f"{r['name']} ({self._format_vnd(base)})", int(r["id"]))
+
+        combo_shift.clear()
+        combo_shift.addItem("-- Chọn ca làm --", None)
+        shifts = self._shifts_repo.list_all()
+        for s in shifts:
+            factor = float(s.get("salary_factor") or 1)
+            combo_shift.addItem(f"{s['name']} (hệ số {factor:g})", int(s["id"]))
+
+        spin_salary.setReadOnly(True)
+
+        def compute_salary() -> None:
+            rid = combo_role.currentData()
+            sid = combo_shift.currentData()
+            if rid is None or sid is None:
+                spin_salary.setValue(0.0)
+                return
+            role = next((x for x in roles if int(x["id"]) == int(rid)), None)
+            shift = next((x for x in shifts if int(x["id"]) == int(sid)), None)
+            base = float(role.get("base_salary") or 0) if role else 0.0
+            factor = float(shift.get("salary_factor") or 1) if shift else 1.0
+            spin_salary.setValue(float(base) * float(factor))
 
         if current:
             line_name.setText(str(current.get("name", "")))
@@ -1125,6 +1154,17 @@ class MainWindow(QMainWindow):
                 idx = combo_role.findData(int(role_id))
                 if idx >= 0:
                     combo_role.setCurrentIndex(idx)
+            if combo_shift.count() > 0:
+                combo_shift.setCurrentIndex(0)
+        else:
+            if combo_role.count() > 0:
+                combo_role.setCurrentIndex(0)
+            if combo_shift.count() > 0:
+                combo_shift.setCurrentIndex(0)
+
+        combo_role.currentIndexChanged.connect(compute_salary)
+        combo_shift.currentIndexChanged.connect(compute_salary)
+        compute_salary()
 
         if isinstance(dlg, QDialog) and dlg.exec() == QDialog.DialogCode.Accepted:
             name = line_name.text().strip()
@@ -1225,21 +1265,49 @@ class MainWindow(QMainWindow):
             name = str(r.get("name", ""))
             if q and q not in name.lower():
                 continue
-            rows.append([r["id"], name, str(r.get("start_time", "")), str(r.get("end_time", ""))])
-        self._sf_table.setModel(build_model(["ID", "Tên ca", "Bắt đầu", "Kết thúc"], rows))
+            rows.append(
+                [
+                    r["id"],
+                    name,
+                    str(r.get("start_time", "")),
+                    str(r.get("end_time", "")),
+                    float(r.get("salary_factor") or 1),
+                ]
+            )
+        self._sf_table.setModel(build_model(["ID", "Tên ca", "Bắt đầu", "Kết thúc", "Hệ số"], rows))
         self._sf_table.resizeColumnsToContents()
 
-    def _open_shift_dialog(self, current: dict | None = None) -> tuple[str, str, str] | None:
+    def _open_shift_dialog(self, current: dict | None = None) -> tuple[str, str, str, float] | None:
         dlg = load_ui("dialog_shift.ui", self)
         line_name = get_child(dlg, QLineEdit, "lineName")
         time_start = get_child(dlg, QTimeEdit, "timeStart")
         time_end = get_child(dlg, QTimeEdit, "timeEnd")
+        spin_factor = get_child(dlg, QDoubleSpinBox, "spinSalaryFactor")
         buttons = get_child(dlg, QDialogButtonBox, "buttonBox")
         buttons.accepted.connect(dlg.accept)
         buttons.rejected.connect(dlg.reject)
 
+        def parse_time(value: object) -> QTime:
+            s = str(value or "").strip()
+            if not s:
+                return QTime()
+            for fmt in ("HH:mm:ss", "H:mm:ss", "HH:mm", "H:mm"):
+                t = QTime.fromString(s, fmt)
+                if t.isValid():
+                    return t
+            return QTime()
+
         if current:
             line_name.setText(str(current.get("name", "")))
+            t1 = parse_time(current.get("start_time"))
+            t2 = parse_time(current.get("end_time"))
+            if t1.isValid():
+                time_start.setTime(t1)
+            if t2.isValid():
+                time_end.setTime(t2)
+            spin_factor.setValue(float(current.get("salary_factor") or 1))
+        else:
+            spin_factor.setValue(1.0)
 
         if isinstance(dlg, QDialog) and dlg.exec() == QDialog.DialogCode.Accepted:
             name = line_name.text().strip()
@@ -1248,16 +1316,17 @@ class MainWindow(QMainWindow):
                 return None
             start = time_start.time().toString("HH:mm:ss")
             end = time_end.time().toString("HH:mm:ss")
-            return name, start, end
+            factor = float(spin_factor.value())
+            return name, start, end, factor
         return None
 
     def _add_shift(self) -> None:
         result = self._open_shift_dialog()
         if not result:
             return
-        name, start, end = result
+        name, start, end, factor = result
         try:
-            self._shifts_repo.create(name, start, end)
+            self._shifts_repo.create(name, start, end, factor)
         except Exception as e:
             QMessageBox.critical(self, "Lỗi", str(e))
             return
@@ -1275,9 +1344,9 @@ class MainWindow(QMainWindow):
         result = self._open_shift_dialog(current=current)
         if not result:
             return
-        name, start, end = result
+        name, start, end, factor = result
         try:
-            self._shifts_repo.update(shift_id, name, start, end)
+            self._shifts_repo.update(shift_id, name, start, end, factor)
         except Exception as e:
             QMessageBox.critical(self, "Lỗi", str(e))
             return

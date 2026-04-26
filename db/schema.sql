@@ -9,7 +9,8 @@ USE billiards_manager;
 -- Roles / permissions (shared for users + employees)
 CREATE TABLE IF NOT EXISTS roles (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(50) NOT NULL UNIQUE
+  name VARCHAR(50) NOT NULL UNIQUE,
+  base_salary FLOAT NOT NULL DEFAULT 0
 );
 
 -- Users (login)
@@ -40,7 +41,8 @@ CREATE TABLE IF NOT EXISTS shifts (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(50) NOT NULL,
   start_time TIME NOT NULL,
-  end_time TIME NOT NULL
+  end_time TIME NOT NULL,
+  salary_factor FLOAT NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS employee_shifts (

@@ -30,7 +30,7 @@
    <item>
     <widget class="QFrame" name="card">
      <property name="styleSheet">
-      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;} QLineEdit, QTimeEdit{padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;} QLineEdit:focus, QTimeEdit:focus{border:1px solid #4293e6;}</string>
+      <string notr="true">QFrame#card{background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;} QLineEdit, QTimeEdit, QDoubleSpinBox{padding:8px 10px;border:1px solid #d1d5db;border-radius:10px;} QLineEdit:focus, QTimeEdit:focus, QDoubleSpinBox:focus{border:1px solid #4293e6;}</string>
      </property>
      <layout class="QFormLayout" name="formLayout">
       <property name="leftMargin">
@@ -74,6 +74,29 @@
       </item>
       <item row="2" column="1">
        <widget class="QTimeEdit" name="timeEnd"/>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="labelFactor">
+        <property name="text">
+         <string>Hệ số lương</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QDoubleSpinBox" name="spinSalaryFactor">
+        <property name="decimals">
+         <number>2</number>
+        </property>
+        <property name="minimum">
+         <double>0.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>100.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.100000000000000</double>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>
