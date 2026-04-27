@@ -89,14 +89,33 @@ class SessionsBoard(QWidget):
         self._empty.setVisible(False)
 
         cols = 3
-        r = 0
-        c = 0
+        # Group by table type name (UI requirement: phân loại theo loại bàn)
+        def type_label(x: TableState) -> str:
+            name = (x.type_name or "").strip()
+            return name if name else "Chưa đặt loại"
+
+        grouped: dict[str, list[TableState]] = {}
         for t in tables:
-            card = self._build_table_card(t)
-            self._grid.addWidget(card, r, c)
-            c += 1
-            if c >= cols:
-                c = 0
+            grouped.setdefault(type_label(t), []).append(t)
+
+        r = 0
+        for group_name in sorted(grouped.keys(), key=lambda s: (s == "Chưa đặt loại", s.lower())):
+            header = QLabel(group_name)
+            header.setStyleSheet("font-size:14px;font-weight:800;")
+            header.setProperty("muted", False)
+            header.setContentsMargins(4, 8, 4, 0)
+            self._grid.addWidget(header, r, 0, 1, cols)
+            r += 1
+
+            c = 0
+            for t in sorted(grouped[group_name], key=lambda x: (x.status != "playing", x.name.lower(), x.table_id)):
+                card = self._build_table_card(t)
+                self._grid.addWidget(card, r, c)
+                c += 1
+                if c >= cols:
+                    c = 0
+                    r += 1
+            if c != 0:
                 r += 1
 
         self._grid.setRowStretch(r + 1, 1)

@@ -19,7 +19,10 @@ from PySide6.QtWidgets import (
     QPushButton,
     QDoubleSpinBox,
     QFileDialog,
+    QGridLayout,
+    QHBoxLayout,
     QSizePolicy,
+    QSpacerItem,
     QStackedWidget,
     QTableView,
     QTextEdit,
@@ -46,6 +49,7 @@ from app.repositories.shift_repository import ShiftRepository
 from app.repositories.user_repository import UserRepository
 from app.widgets.table_helpers import build_model, configure_table_view, selected_row_data
 from app.widgets.sessions_board import SessionsBoard, TableState
+from app.widgets.revenue_chart import RevenueBarChart, RevenuePoint
 from app.services.invoice_pdf_service import export_invoice_pdf
 from app.services.register_service import RegisterService
 
@@ -94,11 +98,13 @@ class MainWindow(QMainWindow):
         self._list_menu = get_child(self._ui, QListWidget, "listMenu")
         self._btn_logout = get_child(self._ui, QPushButton, "btnLogout")
         self._stacked = get_child(self._ui, QStackedWidget, "stackedPages")
+        self._lbl_top_title = get_child(self._ui, QLabel, "lblTopTitle")
 
         rn = normalize_role(user.get("role_name"))
         self._lbl_user.setText(f"Xin chào, {user.get('username', '')}\n(Quyền: {rn})")
         self._btn_logout.clicked.connect(self._on_logout)
 
+        self._init_dashboard_page()
         self._init_table_types_page()
         self._init_tables_page()
         self._init_service_types_page()
@@ -151,6 +157,8 @@ class MainWindow(QMainWindow):
         si = item.data(Qt.ItemDataRole.UserRole)
         if si is None:
             return
+        if hasattr(self, "_lbl_top_title") and self._lbl_top_title is not None:
+            self._lbl_top_title.setText(item.text())
         self._stacked.setCurrentIndex(int(si))
 
     def _on_logout(self) -> None:
@@ -315,6 +323,205 @@ class MainWindow(QMainWindow):
         n = int(round(float(amount or 0)))
         s = f"{n:,}".replace(",", ".")
         return f"{s} đ"
+
+    # ---------- Dashboard ----------
+    def _init_dashboard_page(self) -> None:
+        page = get_child(self._ui, QWidget, "pageDashboard")
+        layout = page.layout()
+        if layout is None:
+            layout = QVBoxLayout(page)
+
+        while layout.count():
+            item = layout.takeAt(0)
+            w = item.widget()
+            if w is not None:
+                w.deleteLater()
+
+        card = QFrame(page)
+        card.setProperty("card", True)
+        outer = QVBoxLayout(card)
+        outer.setContentsMargins(18, 18, 18, 18)
+        outer.setSpacing(14)
+
+        header = QHBoxLayout()
+        header.setSpacing(10)
+        left = QVBoxLayout()
+        left.setSpacing(2)
+
+        title = QLabel("Tổng quan")
+        title.setStyleSheet("font-size:18px;font-weight:800;")
+        hint = QLabel("Xem nhanh tình trạng bàn, doanh thu hôm nay, hoá đơn gần đây và đặt lịch sắp tới.")
+        hint.setProperty("muted", True)
+        hint.setWordWrap(True)
+        left.addWidget(title)
+        left.addWidget(hint)
+
+        self._dash_btn_refresh = QPushButton("Làm mới")
+        self._dash_btn_refresh.setProperty("variant", "primary")
+        self._dash_btn_refresh.clicked.connect(self._reload_dashboard)
+
+        header.addLayout(left, 1)
+        header.addWidget(self._dash_btn_refresh, 0, Qt.AlignmentFlag.AlignTop)
+        outer.addLayout(header)
+
+        self._dash_kpi_grid = QGridLayout()
+        self._dash_kpi_grid.setHorizontalSpacing(12)
+        self._dash_kpi_grid.setVerticalSpacing(12)
+        outer.addLayout(self._dash_kpi_grid)
+
+        def make_kpi(title_text: str) -> tuple[QFrame, QLabel]:
+            w = QFrame()
+            w.setProperty("card", True)
+            w.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            w.setMinimumHeight(88)
+            ly = QVBoxLayout(w)
+            ly.setContentsMargins(14, 12, 14, 12)
+            ly.setSpacing(2)
+            t = QLabel(title_text)
+            t.setProperty("muted", True)
+            v = QLabel("—")
+            v.setStyleSheet("font-size:20px;font-weight:800;")
+            ly.addWidget(t)
+            ly.addWidget(v)
+            return w, v
+
+        self._dash_kpi: dict[str, QLabel] = {}
+        kpis = [
+            ("tables_total", "Tổng số bàn"),
+            ("tables_playing", "Đang chơi"),
+            ("tables_empty", "Bàn trống"),
+            ("tables_maintenance", "Bảo trì"),
+            ("active_sessions", "Phiên đang chạy"),
+            ("revenue_today", "Doanh thu hôm nay"),
+            ("invoices_today", "Hoá đơn hôm nay"),
+            ("bookings_today", "Đặt lịch hôm nay"),
+        ]
+
+        cols = 4
+        for i, (key, label) in enumerate(kpis):
+            card_kpi, value_lbl = make_kpi(label)
+            self._dash_kpi[key] = value_lbl
+            self._dash_kpi_grid.addWidget(card_kpi, i // cols, i % cols)
+
+        self._dash_kpi_grid.setRowStretch((len(kpis) + cols - 1) // cols, 0)
+        for c in range(cols):
+            self._dash_kpi_grid.setColumnStretch(c, 1)
+
+        chart_card = QFrame()
+        chart_card.setProperty("card", True)
+        chart_ly = QVBoxLayout(chart_card)
+        chart_ly.setContentsMargins(14, 14, 14, 14)
+        chart_ly.setSpacing(10)
+        chart_title = QLabel("Doanh thu 30 ngày gần nhất")
+        chart_title.setStyleSheet("font-size:15px;font-weight:800;")
+        chart_ly.addWidget(chart_title)
+        self._dash_rev_chart = RevenueBarChart()
+        chart_ly.addWidget(self._dash_rev_chart, 1)
+        outer.addWidget(chart_card)
+
+        tables_row = QHBoxLayout()
+        tables_row.setSpacing(12)
+
+        self._dash_recent_invoices = QTableView()
+        configure_table_view(self._dash_recent_invoices)
+        self._dash_recent_invoices.setMinimumHeight(220)
+
+        self._dash_upcoming_bookings = QTableView()
+        configure_table_view(self._dash_upcoming_bookings)
+        self._dash_upcoming_bookings.setMinimumHeight(220)
+
+        left_card = QFrame()
+        left_card.setProperty("card", True)
+        left_ly = QVBoxLayout(left_card)
+        left_ly.setContentsMargins(14, 14, 14, 14)
+        left_ly.setSpacing(10)
+        left_title = QLabel("Hoá đơn gần đây")
+        left_title.setStyleSheet("font-size:15px;font-weight:800;")
+        left_ly.addWidget(left_title)
+        left_ly.addWidget(self._dash_recent_invoices, 1)
+
+        right_card = QFrame()
+        right_card.setProperty("card", True)
+        right_ly = QVBoxLayout(right_card)
+        right_ly.setContentsMargins(14, 14, 14, 14)
+        right_ly.setSpacing(10)
+        right_title = QLabel("Đặt lịch sắp tới")
+        right_title.setStyleSheet("font-size:15px;font-weight:800;")
+        right_ly.addWidget(right_title)
+        right_ly.addWidget(self._dash_upcoming_bookings, 1)
+
+        tables_row.addWidget(left_card, 1)
+        tables_row.addWidget(right_card, 1)
+        outer.addLayout(tables_row, 1)
+
+        layout.addWidget(card)
+        if layout.count() >= 1:
+            layout.setStretch(layout.count() - 1, 1)
+
+        self._reload_dashboard()
+
+    def _reload_dashboard(self) -> None:
+        try:
+            kpi = self._stats_repo.dashboard_kpis()
+            invoices = self._stats_repo.recent_invoices(8)
+            bookings = self._stats_repo.upcoming_bookings(8)
+            rev = self._stats_repo.revenue_by_day(30)
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi DB", str(e))
+            return
+
+        def set_kpi(key: str, value: object, *, money: bool = False) -> None:
+            lbl = self._dash_kpi.get(key)
+            if lbl is None:
+                return
+            if money:
+                lbl.setText(self._format_vnd(float(value or 0)))
+            else:
+                lbl.setText(str(int(value)) if isinstance(value, (int, float)) else (str(value) if value is not None else "0"))
+
+        set_kpi("tables_total", kpi.get("tables_total", 0))
+        set_kpi("tables_playing", kpi.get("tables_playing", 0))
+        set_kpi("tables_empty", kpi.get("tables_empty", 0))
+        set_kpi("tables_maintenance", kpi.get("tables_maintenance", 0))
+        set_kpi("active_sessions", kpi.get("active_sessions", 0))
+        set_kpi("revenue_today", kpi.get("revenue_today", 0), money=True)
+        set_kpi("invoices_today", kpi.get("invoices_today", 0))
+        set_kpi("bookings_today", kpi.get("bookings_today", 0))
+
+        inv_rows: list[list[object]] = []
+        for r in invoices:
+            inv_rows.append(
+                [
+                    r.get("id"),
+                    r.get("table_name") or "—",
+                    self._format_vnd(float(r.get("total") or 0)),
+                    str(r.get("created_at") or ""),
+                ]
+            )
+        self._dash_recent_invoices.setModel(build_model(["Mã HĐ", "Bàn", "Tổng", "Tạo lúc"], inv_rows))
+        self._dash_recent_invoices.resizeColumnsToContents()
+
+        bk_rows: list[list[object]] = []
+        for r in bookings:
+            phone = str(r.get("phone") or "").strip()
+            bk_rows.append(
+                [
+                    r.get("id"),
+                    r.get("table_name") or "—",
+                    r.get("customer_name") or "",
+                    phone if phone else "—",
+                    str(r.get("start_time") or ""),
+                ]
+            )
+        self._dash_upcoming_bookings.setModel(build_model(["Mã", "Bàn", "Khách", "SĐT", "Bắt đầu"], bk_rows))
+        self._dash_upcoming_bookings.resizeColumnsToContents()
+
+        # Chart: oldest -> newest
+        pts: list[RevenuePoint] = []
+        for r in reversed(rev or []):
+            pts.append(RevenuePoint(day=str(r.get("day") or ""), revenue=float(r.get("revenue") or 0)))
+        if hasattr(self, "_dash_rev_chart") and self._dash_rev_chart is not None:
+            self._dash_rev_chart.set_points(pts)
 
     def _table_status_label(self, status: str) -> str:
         status_map = {"empty": "Trống", "playing": "Đang chơi", "maintenance": "Bảo trì"}
@@ -496,12 +703,13 @@ class MainWindow(QMainWindow):
         self._tb_delete = get_child(self._crud_tables, QPushButton, "btnDelete")
         self._tb_grid = get_child(self._crud_tables, QListWidget, "gridList")
 
-        self._tb_filter.setVisible(False)
+        self._tb_filter.setVisible(True)
         self._tb_refresh.clicked.connect(self._reload_tables)
         self._tb_add.clicked.connect(self._add_table)
         self._tb_edit.clicked.connect(self._edit_table)
         self._tb_delete.clicked.connect(self._delete_table)
         self._tb_search.textChanged.connect(self._apply_tables_filter)
+        self._tb_filter.currentIndexChanged.connect(self._apply_tables_filter)
         self._tb_grid.itemDoubleClicked.connect(lambda _: self._edit_table())
         self._wire_grid_five_columns(self._tb_grid, row_height=130, icon_size=QSize(64, 64))
 
@@ -513,14 +721,28 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Lỗi DB", str(e))
             return
+        # build filter: table types
+        try:
+            types = self._table_types_repo.list_all()
+        except Exception:
+            types = []
+        self._tb_filter.blockSignals(True)
+        self._tb_filter.clear()
+        self._tb_filter.addItem("Tất cả loại bàn", None)
+        for t in types:
+            self._tb_filter.addItem(str(t.get("name", "")), int(t["id"]))
+        self._tb_filter.blockSignals(False)
         self._apply_tables_filter()
 
     def _apply_tables_filter(self) -> None:
         q = self._tb_search.text().strip().lower() if hasattr(self, "_tb_search") else ""
+        type_id = self._tb_filter.currentData() if hasattr(self, "_tb_filter") else None
         items: list[dict] = []
         for r in self._tables_cache:
             name = str(r.get("name", ""))
             type_name = str(r.get("type_name", "") or "")
+            if type_id is not None and int(r.get("type_id") or 0) != int(type_id):
+                continue
             if q and q not in name.lower() and q not in type_name.lower():
                 continue
             items.append(r)
