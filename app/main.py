@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 
 from app.core.theme import apply_theme
 from app.core.db import Database
-from app.core.db_migrate import ensure_service_images_columns
+from app.core.db_migrate import run_all_migrations
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
 from app.services.register_service import RegisterService
@@ -22,7 +22,7 @@ def main() -> int:
 
     try:
         db = Database()
-        ensure_service_images_columns(db)
+        run_all_migrations(db)
     except Exception as e:
         QMessageBox.critical(None, "Không kết nối được MySQL", str(e))
         return 1

@@ -35,20 +35,46 @@ from app.core.ui import get_child, load_ui
 from app.core.db import Database
 from app.core.image_store import resolve_image_path, store_image
 from app.core.permissions import is_admin, menu_entries_for_role, normalize_role
+from app.repositories.activity_log_repository import ActivityLogRepository
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.employee_repository import EmployeeRepository
+from app.repositories.expense_repository import ExpenseRepository
+from app.repositories.inventory_repository import InventoryRepository
 from app.repositories.invoice_repository import InvoiceRepository
+from app.repositories.member_repository import MemberRepository
+from app.repositories.payment_group_repository import PaymentGroupRepository
+from app.repositories.power_log_repository import PowerLogRepository
 from app.repositories.role_repository import RoleRepository
 from app.repositories.session_repository import SessionRepository
 from app.repositories.service_repository import ServiceRepository
 from app.repositories.service_type_repository import ServiceTypeRepository
+from app.repositories.shift_handover_repository import ShiftHandoverRepository
+from app.repositories.shift_repository import ShiftRepository
 from app.repositories.stats_repository import StatsRepository
 from app.repositories.table_repository import TableRepository
 from app.repositories.table_type_repository import TableTypeRepository
-from app.repositories.shift_repository import ShiftRepository
 from app.repositories.user_repository import UserRepository
+from app.services.activity_log_service import ActivityLogService
 from app.widgets.table_helpers import build_model, configure_table_view, selected_row_data
 from app.widgets.sessions_board import SessionsBoard, TableState
+from app.widgets.table_features_dialog import (
+    ACTION_DETAIL,
+    ACTION_GROUP_PAY,
+    ACTION_MEMBER,
+    ACTION_PAYMENT,
+    ACTION_POWER_HISTORY,
+    ACTION_SERVICE,
+    ACTION_TRANSFER,
+    ACTION_USER_HISTORY,
+    BillService,
+    BillSummary,
+    TableFeaturesDialog,
+)
+from app.widgets.feature_dialogs import (
+    GroupPaymentDialog,
+    HistoryDialog,
+    MemberChooserDialog,
+)
 from app.widgets.revenue_chart import RevenueBarChart, RevenuePoint
 from app.services.invoice_pdf_service import export_invoice_pdf
 from app.services.register_service import RegisterService
@@ -75,6 +101,14 @@ class MainWindow(QMainWindow):
         self._invoices_repo = InvoiceRepository(db)
         self._stats_repo = StatsRepository(db)
         self._users_repo = UserRepository(db)
+        self._members_repo = MemberRepository(db)
+        self._power_repo = PowerLogRepository(db)
+        self._activity_repo = ActivityLogRepository(db)
+        self._payment_groups_repo = PaymentGroupRepository(db)
+        self._expenses_repo = ExpenseRepository(db)
+        self._inventory_repo = InventoryRepository(db)
+        self._handovers_repo = ShiftHandoverRepository(db)
+        self._activity = ActivityLogService(self._activity_repo)
         self._register = RegisterService(self._users_repo)
 
         self._table_types_cache: list[dict] = []
@@ -103,6 +137,8 @@ class MainWindow(QMainWindow):
         rn = normalize_role(user.get("role_name"))
         self._lbl_user.setText(f"Xin chào, {user.get('username', '')}\n(Quyền: {rn})")
         self._btn_logout.clicked.connect(self._on_logout)
+
+        self._activity.log(user, "login", detail=f"Đăng nhập với quyền {rn}")
 
         self._init_dashboard_page()
         self._init_table_types_page()
@@ -158,10 +194,17 @@ class MainWindow(QMainWindow):
         if si is None:
             return
         if hasattr(self, "_lbl_top_title") and self._lbl_top_title is not None:
-            self._lbl_top_title.setText(item.text())
+            label = item.text()
+            if "  " in label:
+                label = label.split("  ", 1)[1].strip()
+            self._lbl_top_title.setText(label)
         self._stacked.setCurrentIndex(int(si))
 
     def _on_logout(self) -> None:
+        try:
+            self._activity.log(self._user, "logout", detail="Đăng xuất bằng nút")
+        except Exception:
+            pass
         self._logout_via_button = True
         self.close()
 
@@ -326,6 +369,8 @@ class MainWindow(QMainWindow):
 
     # ---------- Dashboard ----------
     def _init_dashboard_page(self) -> None:
+        from datetime import datetime
+
         page = get_child(self._ui, QWidget, "pageDashboard")
         layout = page.layout()
         if layout is None:
@@ -337,75 +382,109 @@ class MainWindow(QMainWindow):
             if w is not None:
                 w.deleteLater()
 
-        card = QFrame(page)
-        card.setProperty("card", True)
-        outer = QVBoxLayout(card)
-        outer.setContentsMargins(18, 18, 18, 18)
+        # Container scrollable nếu cần (page khá dài)
+        outer = QVBoxLayout()
+        outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(14)
 
-        header = QHBoxLayout()
-        header.setSpacing(10)
+        # ===== Header =====
+        header_card = QFrame()
+        header_card.setProperty("card", True)
+        hcl = QHBoxLayout(header_card)
+        hcl.setContentsMargins(18, 14, 18, 14)
+        hcl.setSpacing(10)
         left = QVBoxLayout()
         left.setSpacing(2)
-
-        title = QLabel("Tổng quan")
-        title.setStyleSheet("font-size:18px;font-weight:800;")
-        hint = QLabel("Xem nhanh tình trạng bàn, doanh thu hôm nay, hoá đơn gần đây và đặt lịch sắp tới.")
-        hint.setProperty("muted", True)
-        hint.setWordWrap(True)
+        title = QLabel("Tổng quan hoạt động")
+        title.setStyleSheet("font-size:20px;font-weight:800;")
+        username = (self._user or {}).get("username") or "—"
+        greet = QLabel(
+            f"Xin chào, <b>{username}</b> · Hôm nay là {datetime.now().strftime('%A, %d/%m/%Y')}"
+        )
+        greet.setProperty("greeting", True)
+        greet.setTextFormat(Qt.TextFormat.RichText)
         left.addWidget(title)
-        left.addWidget(hint)
+        left.addWidget(greet)
 
-        self._dash_btn_refresh = QPushButton("Làm mới")
+        self._dash_btn_refresh = QPushButton("⟳  Làm mới")
         self._dash_btn_refresh.setProperty("variant", "primary")
         self._dash_btn_refresh.clicked.connect(self._reload_dashboard)
 
-        header.addLayout(left, 1)
-        header.addWidget(self._dash_btn_refresh, 0, Qt.AlignmentFlag.AlignTop)
-        outer.addLayout(header)
+        hcl.addLayout(left, 1)
+        hcl.addWidget(self._dash_btn_refresh, 0, Qt.AlignmentFlag.AlignVCenter)
+        outer.addWidget(header_card)
 
-        self._dash_kpi_grid = QGridLayout()
-        self._dash_kpi_grid.setHorizontalSpacing(12)
-        self._dash_kpi_grid.setVerticalSpacing(12)
-        outer.addLayout(self._dash_kpi_grid)
-
-        def make_kpi(title_text: str) -> tuple[QFrame, QLabel]:
-            w = QFrame()
-            w.setProperty("card", True)
-            w.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            w.setMinimumHeight(88)
-            ly = QVBoxLayout(w)
-            ly.setContentsMargins(14, 12, 14, 12)
-            ly.setSpacing(2)
-            t = QLabel(title_text)
-            t.setProperty("muted", True)
-            v = QLabel("—")
-            v.setStyleSheet("font-size:20px;font-weight:800;")
-            ly.addWidget(t)
-            ly.addWidget(v)
-            return w, v
+        # ===== Section 1: Trạng thái bàn =====
+        sec1_title = QLabel("Trạng thái bàn")
+        sec1_title.setProperty("sectionTitle", True)
+        outer.addWidget(sec1_title)
 
         self._dash_kpi: dict[str, QLabel] = {}
-        kpis = [
-            ("tables_total", "Tổng số bàn"),
-            ("tables_playing", "Đang chơi"),
-            ("tables_empty", "Bàn trống"),
-            ("tables_maintenance", "Bảo trì"),
-            ("active_sessions", "Phiên đang chạy"),
-            ("revenue_today", "Doanh thu hôm nay"),
-            ("invoices_today", "Hoá đơn hôm nay"),
-            ("bookings_today", "Đặt lịch hôm nay"),
+        row1 = QGridLayout()
+        row1.setHorizontalSpacing(12)
+        row1.setVerticalSpacing(12)
+
+        tables_kpis = [
+            ("tables_total", "🎱", "Tổng số bàn", "blue"),
+            ("tables_empty", "🟢", "Bàn trống", "green"),
+            ("tables_playing", "🟠", "Đang chơi", "orange"),
+            ("tables_maintenance", "🟡", "Bảo trì", "yellow"),
         ]
-
-        cols = 4
-        for i, (key, label) in enumerate(kpis):
-            card_kpi, value_lbl = make_kpi(label)
+        for i, (key, icon, label, accent) in enumerate(tables_kpis):
+            card_kpi, value_lbl = self._make_kpi_card(icon, label, accent)
             self._dash_kpi[key] = value_lbl
-            self._dash_kpi_grid.addWidget(card_kpi, i // cols, i % cols)
+            row1.addWidget(card_kpi, 0, i)
+        for c in range(len(tables_kpis)):
+            row1.setColumnStretch(c, 1)
+        outer.addLayout(row1)
 
-        self._dash_kpi_grid.setRowStretch((len(kpis) + cols - 1) // cols, 0)
-        for c in range(cols):
-            self._dash_kpi_grid.setColumnStretch(c, 1)
+        # ===== Section 2: Tài chính hôm nay =====
+        sec2_title = QLabel("Tài chính hôm nay")
+        sec2_title.setProperty("sectionTitle", True)
+        outer.addWidget(sec2_title)
+
+        row2 = QGridLayout()
+        row2.setHorizontalSpacing(12)
+        row2.setVerticalSpacing(12)
+        money_kpis = [
+            ("revenue_today", "💰", "Doanh thu hôm nay", "green"),
+            ("expense_today", "📉", "Chi phí hôm nay", "red"),
+            ("invoices_today", "🧾", "Hoá đơn hôm nay", "blue"),
+            ("bookings_today", "📅", "Đặt lịch hôm nay", "purple"),
+        ]
+        for i, (key, icon, label, accent) in enumerate(money_kpis):
+            card_kpi, value_lbl = self._make_kpi_card(icon, label, accent)
+            self._dash_kpi[key] = value_lbl
+            row2.addWidget(card_kpi, 0, i)
+        for c in range(len(money_kpis)):
+            row2.setColumnStretch(c, 1)
+        outer.addLayout(row2)
+
+        # ===== Section 3: Hoạt động & Cảnh báo =====
+        sec3_title = QLabel("Hoạt động & Cảnh báo")
+        sec3_title.setProperty("sectionTitle", True)
+        outer.addWidget(sec3_title)
+
+        row3 = QGridLayout()
+        row3.setHorizontalSpacing(12)
+        row3.setVerticalSpacing(12)
+        ops_kpis = [
+            ("active_sessions", "▶", "Phiên đang chạy", "orange"),
+            ("members_total", "🪪", "Thành viên", "purple"),
+            ("low_stock", "📦", "Kho cảnh báo", "red"),
+            ("revenue_month", "📈", "Doanh thu tháng", "green"),
+        ]
+        for i, (key, icon, label, accent) in enumerate(ops_kpis):
+            card_kpi, value_lbl = self._make_kpi_card(icon, label, accent)
+            self._dash_kpi[key] = value_lbl
+            row3.addWidget(card_kpi, 0, i)
+        for c in range(len(ops_kpis)):
+            row3.setColumnStretch(c, 1)
+        outer.addLayout(row3)
+
+        # ===== Chart + Activity panel side by side =====
+        chart_row = QHBoxLayout()
+        chart_row.setSpacing(12)
 
         chart_card = QFrame()
         chart_card.setProperty("card", True)
@@ -413,30 +492,51 @@ class MainWindow(QMainWindow):
         chart_ly.setContentsMargins(14, 14, 14, 14)
         chart_ly.setSpacing(10)
         chart_title = QLabel("Doanh thu 30 ngày gần nhất")
-        chart_title.setStyleSheet("font-size:15px;font-weight:800;")
+        chart_title.setProperty("sectionTitle", True)
         chart_ly.addWidget(chart_title)
         self._dash_rev_chart = RevenueBarChart()
+        self._dash_rev_chart.setMinimumHeight(220)
         chart_ly.addWidget(self._dash_rev_chart, 1)
-        outer.addWidget(chart_card)
 
+        activity_card = QFrame()
+        activity_card.setProperty("card", True)
+        act_ly = QVBoxLayout(activity_card)
+        act_ly.setContentsMargins(14, 14, 14, 14)
+        act_ly.setSpacing(10)
+        act_title = QLabel("Hoạt động gần đây")
+        act_title.setProperty("sectionTitle", True)
+        act_ly.addWidget(act_title)
+        self._dash_activity_list = QListWidget()
+        self._dash_activity_list.setMinimumHeight(220)
+        self._dash_activity_list.setStyleSheet(
+            "QListWidget{border:none;background:transparent;}"
+            "QListWidget::item{padding:8px 4px;border-bottom:1px solid #eef2f7;}"
+        )
+        act_ly.addWidget(self._dash_activity_list, 1)
+
+        chart_row.addWidget(chart_card, 2)
+        chart_row.addWidget(activity_card, 1)
+        outer.addLayout(chart_row, 1)
+
+        # ===== Bottom: Hoá đơn gần đây + Đặt lịch sắp tới =====
         tables_row = QHBoxLayout()
         tables_row.setSpacing(12)
 
         self._dash_recent_invoices = QTableView()
         configure_table_view(self._dash_recent_invoices)
-        self._dash_recent_invoices.setMinimumHeight(220)
+        self._dash_recent_invoices.setMinimumHeight(200)
 
         self._dash_upcoming_bookings = QTableView()
         configure_table_view(self._dash_upcoming_bookings)
-        self._dash_upcoming_bookings.setMinimumHeight(220)
+        self._dash_upcoming_bookings.setMinimumHeight(200)
 
         left_card = QFrame()
         left_card.setProperty("card", True)
         left_ly = QVBoxLayout(left_card)
         left_ly.setContentsMargins(14, 14, 14, 14)
         left_ly.setSpacing(10)
-        left_title = QLabel("Hoá đơn gần đây")
-        left_title.setStyleSheet("font-size:15px;font-weight:800;")
+        left_title = QLabel("🧾  Hoá đơn gần đây")
+        left_title.setProperty("sectionTitle", True)
         left_ly.addWidget(left_title)
         left_ly.addWidget(self._dash_recent_invoices, 1)
 
@@ -445,8 +545,8 @@ class MainWindow(QMainWindow):
         right_ly = QVBoxLayout(right_card)
         right_ly.setContentsMargins(14, 14, 14, 14)
         right_ly.setSpacing(10)
-        right_title = QLabel("Đặt lịch sắp tới")
-        right_title.setStyleSheet("font-size:15px;font-weight:800;")
+        right_title = QLabel("📅  Đặt lịch sắp tới")
+        right_title.setProperty("sectionTitle", True)
         right_ly.addWidget(right_title)
         right_ly.addWidget(self._dash_upcoming_bookings, 1)
 
@@ -454,13 +554,45 @@ class MainWindow(QMainWindow):
         tables_row.addWidget(right_card, 1)
         outer.addLayout(tables_row, 1)
 
-        layout.addWidget(card)
+        layout.addLayout(outer)
         if layout.count() >= 1:
+            # Để section cuối giãn theo chiều cao
             layout.setStretch(layout.count() - 1, 1)
 
         self._reload_dashboard()
 
+    def _make_kpi_card(self, icon: str, label_text: str, accent: str) -> tuple[QFrame, QLabel]:
+        w = QFrame()
+        w.setProperty("kpi", True)
+        w.setProperty("accent", accent)
+        w.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        w.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        w.setMinimumHeight(94)
+        ly = QHBoxLayout(w)
+        ly.setContentsMargins(14, 10, 14, 10)
+        ly.setSpacing(12)
+
+        icon_lbl = QLabel(icon)
+        icon_lbl.setProperty("kpiIcon", True)
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
+        text_col = QVBoxLayout()
+        text_col.setSpacing(2)
+        t = QLabel(label_text)
+        t.setProperty("kpiLabel", True)
+        t.setWordWrap(True)
+        v = QLabel("—")
+        v.setProperty("kpiValue", True)
+        text_col.addWidget(t)
+        text_col.addWidget(v)
+
+        ly.addWidget(icon_lbl, 0)
+        ly.addLayout(text_col, 1)
+        return w, v
+
     def _reload_dashboard(self) -> None:
+        from datetime import date
+
         try:
             kpi = self._stats_repo.dashboard_kpis()
             invoices = self._stats_repo.recent_invoices(8)
@@ -477,7 +609,9 @@ class MainWindow(QMainWindow):
             if money:
                 lbl.setText(self._format_vnd(float(value or 0)))
             else:
-                lbl.setText(str(int(value)) if isinstance(value, (int, float)) else (str(value) if value is not None else "0"))
+                lbl.setText(
+                    str(int(value)) if isinstance(value, (int, float)) else (str(value) if value is not None else "0")
+                )
 
         set_kpi("tables_total", kpi.get("tables_total", 0))
         set_kpi("tables_playing", kpi.get("tables_playing", 0))
@@ -488,6 +622,38 @@ class MainWindow(QMainWindow):
         set_kpi("invoices_today", kpi.get("invoices_today", 0))
         set_kpi("bookings_today", kpi.get("bookings_today", 0))
 
+        # KPI mở rộng: chi phí hôm nay, thành viên, kho cảnh báo, doanh thu tháng
+        today = date.today()
+        try:
+            expense_today = self._expenses_repo.total_by_range(today.isoformat(), today.isoformat())
+        except Exception:
+            expense_today = 0.0
+        set_kpi("expense_today", expense_today, money=True)
+
+        try:
+            members_total = len(self._members_repo.list_all())
+        except Exception:
+            members_total = 0
+        set_kpi("members_total", members_total)
+
+        try:
+            low_stock_n = len(self._inventory_repo.low_stock())
+        except Exception:
+            low_stock_n = 0
+        set_kpi("low_stock", low_stock_n)
+
+        try:
+            month_start = today.replace(day=1).isoformat()
+            row = self._db.fetch_one(
+                "SELECT COALESCE(SUM(total), 0) AS s FROM invoices WHERE DATE(created_at) >= %s",
+                (month_start,),
+            )
+            revenue_month = float((row or {}).get("s") or 0)
+        except Exception:
+            revenue_month = 0.0
+        set_kpi("revenue_month", revenue_month, money=True)
+
+        # ----- Bảng hoá đơn gần đây -----
         inv_rows: list[list[object]] = []
         for r in invoices:
             inv_rows.append(
@@ -501,6 +667,7 @@ class MainWindow(QMainWindow):
         self._dash_recent_invoices.setModel(build_model(["Mã HĐ", "Bàn", "Tổng", "Tạo lúc"], inv_rows))
         self._dash_recent_invoices.resizeColumnsToContents()
 
+        # ----- Bảng đặt lịch sắp tới -----
         bk_rows: list[list[object]] = []
         for r in bookings:
             phone = str(r.get("phone") or "").strip()
@@ -516,7 +683,29 @@ class MainWindow(QMainWindow):
         self._dash_upcoming_bookings.setModel(build_model(["Mã", "Bàn", "Khách", "SĐT", "Bắt đầu"], bk_rows))
         self._dash_upcoming_bookings.resizeColumnsToContents()
 
-        # Chart: oldest -> newest
+        # ----- Activity feed -----
+        if hasattr(self, "_dash_activity_list") and self._dash_activity_list is not None:
+            self._dash_activity_list.clear()
+            try:
+                acts = self._activity_repo.list_recent(limit=20)
+            except Exception:
+                acts = []
+            if not acts:
+                it = QListWidgetItem("Chưa có hoạt động nào.")
+                it.setForeground(QBrush(QColor("#94a3b8")))
+                self._dash_activity_list.addItem(it)
+            else:
+                for r in acts:
+                    when = str(r.get("created_at") or "")
+                    who = str(r.get("username") or "—")
+                    action = self._activity_action_label(str(r.get("action") or ""))
+                    detail = str(r.get("detail") or "")
+                    text = f"[{when}]  {who}  ·  {action}"
+                    if detail:
+                        text += f"  —  {detail}"
+                    self._dash_activity_list.addItem(QListWidgetItem(text))
+
+        # ----- Chart: oldest -> newest -----
         pts: list[RevenuePoint] = []
         for r in reversed(rev or []):
             pts.append(RevenuePoint(day=str(r.get("day") or ""), revenue=float(r.get("revenue") or 0)))
@@ -1832,9 +2021,7 @@ class MainWindow(QMainWindow):
 
         self._sessions_board = SessionsBoard(container)
         self._sessions_board.refresh_requested.connect(self._reload_sessions_board)
-        self._sessions_board.start_requested.connect(self._start_session_from_table)
-        self._sessions_board.end_requested.connect(self._end_session_by_id)
-        self._sessions_board.add_service_requested.connect(self._add_service_to_session_by_id)
+        self._sessions_board.table_clicked.connect(self._on_table_card_clicked)
         outer.addWidget(self._sessions_board, 1)
 
         layout.addWidget(container)
@@ -1843,36 +2030,25 @@ class MainWindow(QMainWindow):
         self._reload_sessions_board()
 
     def _reload_sessions(self) -> None:
+        # Trang "Phiên chơi" (cũ) đã được thay bằng "Sơ đồ bàn" — chuyển hướng reload sang board mới.
         try:
             self._sessions_cache = self._sessions_repo.list_all()
-        except Exception as e:
-            QMessageBox.critical(self, "Lỗi DB", str(e))
-            return
-        self._apply_sessions_filter()
+        except Exception:
+            self._sessions_cache = []
+        if hasattr(self, "_sessions_board"):
+            self._reload_sessions_board()
 
     def _apply_sessions_filter(self) -> None:
-        q = self._ss_search.text().strip().lower() if hasattr(self, "_ss_search") else ""
-        rows = []
-        for r in self._sessions_cache:
-            table_name = str(r.get("table_name", "") or "")
-            if q and q not in table_name.lower() and q not in str(r.get("id", "")).lower():
-                continue
-            rows.append(
-                [
-                    r["id"],
-                    table_name,
-                    str(r.get("start_time", "")),
-                    str(r.get("end_time", "")),
-                    r.get("total", 0),
-                ]
-            )
-        self._ss_table.setModel(build_model(["ID", "Bàn", "Bắt đầu", "Kết thúc", "Tổng"], rows))
-        self._ss_table.resizeColumnsToContents()
+        # No-op: filter giờ được xử lý trong SessionsBoard widget.
+        return
 
     def _reload_sessions_board(self) -> None:
+        from datetime import datetime, timedelta
+
         try:
             tables = self._tables_repo.list_all()
             sessions = self._sessions_repo.list_all()
+            bookings = self._bookings_repo.list_all()
         except Exception as e:
             QMessageBox.critical(self, "Lỗi DB", str(e))
             return
@@ -1887,10 +2063,33 @@ class MainWindow(QMainWindow):
             if int(tid) not in active_by_table:
                 active_by_table[int(tid)] = s
 
+        # Bàn có booking sắp diễn ra trong 24h tới → coi là "Đặt trước".
+        now = datetime.now()
+        soon = now + timedelta(hours=24)
+        booked_table_ids: set[int] = set()
+        for b in bookings:
+            try:
+                start = b.get("start_time")
+                if isinstance(start, str):
+                    start = datetime.strptime(start, "%Y-%m-%d %H:%M:%S")
+                if not isinstance(start, datetime):
+                    continue
+                if start >= now and start <= soon:
+                    booked_table_ids.add(int(b["table_id"]))
+            except Exception:
+                continue
+
+        # tạm tính cập nhật thời gian thực cho phiên đang chơi
         items: list[TableState] = []
         for t in sorted(tables, key=lambda x: int(x.get("id", 0))):
             tid = int(t["id"])
             active = active_by_table.get(tid)
+            total_now = 0.0
+            if active is not None:
+                try:
+                    total_now = float(self._sessions_repo.compute_total(int(active["id"])) or 0)
+                except Exception:
+                    total_now = float(active.get("total") or 0)
             items.append(
                 TableState(
                     table_id=tid,
@@ -1900,11 +2099,369 @@ class MainWindow(QMainWindow):
                     price_per_hour=float(t.get("price_per_hour") or 0),
                     active_session_id=(int(active["id"]) if active else None),
                     active_start_time=(str(active.get("start_time", "")) if active else None),
-                    active_total=float(active.get("total") or 0) if active else 0.0,
+                    active_total=total_now,
+                    has_booking=(tid in booked_table_ids),
                 )
             )
 
         self._sessions_board.set_tables(items)
+
+    # ---------- Click vào thẻ bàn (Sơ đồ bàn) ----------
+    def _on_table_card_clicked(self, table_id: int) -> None:
+        try:
+            tbl = next((x for x in self._tables_repo.list_all() if int(x.get("id", 0)) == int(table_id)), None)
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi DB", str(e))
+            return
+        if tbl is None:
+            return
+        status = str(tbl.get("status") or "empty").lower()
+        if status == "empty":
+            if QMessageBox.question(
+                self,
+                "Bắt đầu phiên",
+                f"Bắt đầu phiên cho bàn “{tbl.get('name','')}”?",
+            ) == QMessageBox.StandardButton.Yes:
+                self._start_session_from_table(int(table_id))
+            return
+        if status == "maintenance":
+            QMessageBox.information(
+                self,
+                "Bàn đang bảo trì",
+                f"Bàn “{tbl.get('name','')}” đang bảo trì.",
+            )
+            return
+
+        # Đang chơi → mở dialog Tính năng
+        active = next(
+            (
+                s
+                for s in self._sessions_repo.list_all()
+                if int(s.get("table_id") or 0) == int(table_id) and not s.get("end_time")
+            ),
+            None,
+        )
+        if active is None:
+            QMessageBox.warning(self, "Không tìm thấy phiên", "Bàn đang đánh dấu 'đang chơi' nhưng không có phiên mở.")
+            return
+        session_id = int(active["id"])
+        self._open_table_features_dialog(int(table_id), session_id, str(tbl.get("name", "")))
+
+    def _build_bill_summary_for_session(self, session_id: int) -> BillSummary:
+        # Tiền bàn: compute_total trừ tổng dịch vụ.
+        try:
+            services_rows = self._sessions_repo.list_services(int(session_id))
+        except Exception:
+            services_rows = []
+        services = tuple(
+            BillService(
+                name=str(r.get("service_name") or "Dịch vụ"),
+                quantity=int(r.get("quantity") or 0),
+                unit_price=float(r.get("unit_price") or 0),
+            )
+            for r in services_rows
+        )
+        services_total = sum(s.amount for s in services)
+        try:
+            grand_total = float(self._sessions_repo.compute_total(int(session_id)) or 0)
+        except Exception:
+            grand_total = 0.0
+        table_amount = max(0.0, grand_total - services_total)
+        # Áp dụng giảm giá theo thẻ thành viên nếu có.
+        discount = 0.0
+        try:
+            sm = self._members_repo.get_session_member(int(session_id))
+            if sm is not None:
+                discount = float(sm.get("applied_discount_percent") or 0)
+        except Exception:
+            discount = 0.0
+        return BillSummary(
+            table_amount=table_amount,
+            discount_percent=discount,
+            services=services,
+        )
+
+    def _open_table_features_dialog(self, table_id: int, session_id: int, table_name: str) -> None:
+        bill = self._build_bill_summary_for_session(session_id)
+        dlg = TableFeaturesDialog(table_name=table_name, bill=bill, parent=self, is_playing=True)
+
+        def on_action(action_id: str) -> None:
+            if action_id == ACTION_SERVICE:
+                self._add_service_to_session_with_id(int(session_id))
+                self._reload_sessions_board()
+            elif action_id == ACTION_PAYMENT:
+                self._end_session_by_id(int(session_id))
+            elif action_id == ACTION_DETAIL:
+                self._show_session_detail(int(session_id))
+            elif action_id == ACTION_TRANSFER:
+                self._transfer_session_dialog(int(session_id), int(table_id))
+            elif action_id == ACTION_MEMBER:
+                self._assign_member_to_session(int(session_id))
+            elif action_id == ACTION_GROUP_PAY:
+                self._group_payment_flow()
+            elif action_id == ACTION_POWER_HISTORY:
+                self._show_power_history(int(table_id), table_name)
+            elif action_id == ACTION_USER_HISTORY:
+                self._show_user_activity_history()
+
+        dlg.action_triggered.connect(on_action)
+        dlg.exec()
+
+    # ---------- Tính năng mở rộng: Thẻ thành viên ----------
+    def _assign_member_to_session(self, session_id: int) -> None:
+        dlg = MemberChooserDialog(self._members_repo, parent=self)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        member, discount = dlg.selected()
+        if not member:
+            return
+        try:
+            self._members_repo.assign_to_session(
+                int(session_id), int(member["id"]), float(discount)
+            )
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi", str(e))
+            return
+        self._activity.log(
+            self._user,
+            "assign_member",
+            target_type="session",
+            target_id=int(session_id),
+            detail=f"Gắn thẻ thành viên #{member.get('code')} ({member.get('name')}) vào phiên #{session_id}, giảm giá {discount:g}%",
+        )
+        QMessageBox.information(
+            self,
+            "Đã gắn thẻ thành viên",
+            f"{member.get('name')} ({member.get('code')})\nGiảm giá áp dụng: {discount:g}%",
+        )
+        self._reload_sessions_board()
+
+    # ---------- Tính năng mở rộng: Thanh toán nhóm ----------
+    def _group_payment_flow(self) -> None:
+        try:
+            sessions = self._sessions_repo.list_all()
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi DB", str(e))
+            return
+        active = [s for s in sessions if not s.get("end_time")]
+        if not active:
+            QMessageBox.information(self, "Không có phiên đang chạy", "Hiện không có phiên nào để thanh toán nhóm.")
+            return
+
+        dlg = GroupPaymentDialog(
+            active_sessions=active,
+            compute_total_fn=self._sessions_repo.compute_total,
+            parent=self,
+        )
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        result = dlg.result_value()
+        if not result:
+            return
+        name, session_ids = result
+        if not session_ids:
+            return
+        if QMessageBox.question(
+            self,
+            "Xác nhận thanh toán nhóm",
+            f"Sẽ kết thúc {len(session_ids)} phiên và tạo nhóm hóa đơn “{name}”. Tiếp tục?",
+        ) != QMessageBox.StandardButton.Yes:
+            return
+
+        # End từng phiên, tạo invoice, gộp vào payment_group.
+        try:
+            grand_total = 0.0
+            invoice_ids: list[int] = []
+            for sid in session_ids:
+                info = self._sessions_repo.get_detail(int(sid))
+                total = self._sessions_repo.end_session(int(sid))
+                grand_total += float(total or 0)
+                try:
+                    inv_id = self._invoices_repo.create_for_session(int(sid), float(total))
+                    if inv_id:
+                        invoice_ids.append(int(inv_id))
+                except Exception:
+                    # invoice unique per session — bỏ qua nếu đã có
+                    row = self._db.fetch_one(
+                        "SELECT id FROM invoices WHERE session_id=%s",
+                        (int(sid),),
+                    )
+                    if row:
+                        invoice_ids.append(int(row["id"]))
+                # Power off
+                if info is not None:
+                    try:
+                        self._power_repo.log(
+                            int(info.get("table_id") or 0),
+                            "off",
+                            user_id=self._user.get("id"),
+                            note="Thanh toán nhóm",
+                        )
+                    except Exception:
+                        pass
+
+            group_id = self._payment_groups_repo.create(name, grand_total, self._user.get("id"))
+            for inv_id in invoice_ids:
+                self._payment_groups_repo.add_invoice(group_id, int(inv_id))
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi", str(e))
+            return
+
+        self._activity.log(
+            self._user,
+            "group_payment",
+            target_type="payment_group",
+            target_id=int(group_id),
+            detail=f"Thanh toán nhóm “{name}” gồm {len(session_ids)} phiên, tổng: {grand_total:,.0f}đ",
+        )
+        QMessageBox.information(
+            self,
+            "Thanh toán nhóm thành công",
+            f"Đã tạo nhóm thanh toán “{name}”\nSố phiên: {len(session_ids)}\nTổng: {self._format_vnd(grand_total)}",
+        )
+        self._reload_sessions_board()
+        self._reload_invoices()
+        self._reload_tables()
+
+    # ---------- Tính năng mở rộng: Lịch sử bật/tắt điện ----------
+    def _show_power_history(self, table_id: int, table_name: str) -> None:
+        try:
+            rows = self._power_repo.list_for_table(int(table_id), limit=200)
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi DB", str(e))
+            return
+        data = [
+            [
+                str(r.get("action_time", "")),
+                "Bật" if str(r.get("action")) == "on" else "Tắt",
+                str(r.get("user_name") or "-"),
+                str(r.get("note") or ""),
+            ]
+            for r in rows
+        ]
+        dlg = HistoryDialog(
+            title=f"Lịch sử bật/tắt điện - {table_name}",
+            headers=["Thời điểm", "Hành động", "Người dùng", "Ghi chú"],
+            rows=data,
+            parent=self,
+        )
+        dlg.exec()
+
+    # ---------- Tính năng mở rộng: Lịch sử người dùng ----------
+    def _show_user_activity_history(self) -> None:
+        try:
+            rows = self._activity_repo.list_recent(limit=300)
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi DB", str(e))
+            return
+        data = [
+            [
+                str(r.get("created_at", "")),
+                str(r.get("username") or "-"),
+                self._activity_action_label(str(r.get("action"))),
+                str(r.get("target_type") or "-"),
+                str(r.get("target_id") or "-"),
+                str(r.get("detail") or ""),
+            ]
+            for r in rows
+        ]
+        dlg = HistoryDialog(
+            title="Lịch sử người dùng",
+            headers=["Thời điểm", "Người dùng", "Hành động", "Đối tượng", "Mã", "Chi tiết"],
+            rows=data,
+            parent=self,
+        )
+        dlg.exec()
+
+    @staticmethod
+    def _activity_action_label(action: str) -> str:
+        mapping = {
+            "login": "Đăng nhập",
+            "logout": "Đăng xuất",
+            "start_session": "Bắt đầu phiên",
+            "payment": "Thanh toán",
+            "transfer_table": "Chuyển bàn",
+            "add_service": "Thêm dịch vụ",
+            "assign_member": "Gắn thẻ thành viên",
+            "group_payment": "Thanh toán nhóm",
+        }
+        return mapping.get(action, action)
+
+    def _show_session_detail(self, session_id: int) -> None:
+        session = self._sessions_repo.get_detail(int(session_id))
+        items = self._sessions_repo.list_services(int(session_id))
+        if not session:
+            QMessageBox.warning(self, "Không tìm thấy", "Phiên không tồn tại.")
+            return
+        lines = [
+            f"Phiên #{session.get('id')}  |  Bàn: {session.get('table_name','')}",
+            f"Bắt đầu: {session.get('start_time','')}",
+            f"Kết thúc: {session.get('end_time') or '(đang chơi)'}",
+            "",
+            "Dịch vụ đã dùng:",
+        ]
+        if not items:
+            lines.append("  (chưa có)")
+        else:
+            for r in items:
+                lines.append(
+                    f"  - {r.get('service_name','')}: {int(r.get('quantity') or 0)} x "
+                    f"{self._format_vnd(float(r.get('unit_price') or 0))}"
+                )
+        try:
+            total = float(self._sessions_repo.compute_total(int(session_id)) or 0)
+        except Exception:
+            total = float(session.get("total") or 0)
+        lines.append("")
+        lines.append(f"Tạm tính: {self._format_vnd(total)}")
+        QMessageBox.information(self, f"Chi tiết phiên #{session_id}", "\n".join(lines))
+
+    def _transfer_session_dialog(self, session_id: int, current_table_id: int) -> None:
+        try:
+            tables = self._tables_repo.list_all()
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi DB", str(e))
+            return
+        targets = [t for t in tables if int(t.get("id", 0)) != int(current_table_id) and str(t.get("status")) == "empty"]
+        if not targets:
+            QMessageBox.information(self, "Không có bàn trống", "Hiện không có bàn trống để chuyển sang.")
+            return
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Chuyển bàn")
+        v = QVBoxLayout(dlg)
+        v.addWidget(QLabel("Chọn bàn đích:"))
+        combo = QComboBox()
+        for t in targets:
+            combo.addItem(str(t.get("name", "")), int(t["id"]))
+        v.addWidget(combo)
+        bb = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        bb.accepted.connect(dlg.accept)
+        bb.rejected.connect(dlg.reject)
+        v.addWidget(bb)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        target_id = int(combo.currentData())
+        try:
+            self._db.execute("UPDATE sessions SET table_id=%s WHERE id=%s", (target_id, int(session_id)))
+            self._db.execute("UPDATE tables SET status='playing' WHERE id=%s", (target_id,))
+            self._db.execute("UPDATE tables SET status='empty' WHERE id=%s", (int(current_table_id),))
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi", str(e))
+            return
+        try:
+            self._power_repo.log(int(current_table_id), "off", user_id=self._user.get("id"), note="Chuyển bàn")
+            self._power_repo.log(int(target_id), "on", user_id=self._user.get("id"), note="Chuyển bàn")
+        except Exception:
+            pass
+        self._activity.log(
+            self._user,
+            "transfer_table",
+            target_type="session",
+            target_id=int(session_id),
+            detail=f"Chuyển phiên #{session_id} từ bàn #{current_table_id} sang bàn #{target_id}",
+        )
+        self._reload_sessions_board()
+        self._reload_tables()
 
     def _start_session(self) -> None:
         dlg = load_ui("dialog_session_start.ui", self)
@@ -1936,10 +2493,21 @@ class MainWindow(QMainWindow):
 
     def _start_session_from_table(self, table_id: int) -> None:
         try:
-            self._sessions_repo.start_session(int(table_id))
+            sid = self._sessions_repo.start_session(int(table_id))
         except Exception as e:
             QMessageBox.critical(self, "Lỗi", str(e))
             return
+        try:
+            self._power_repo.log(int(table_id), "on", user_id=self._user.get("id"))
+        except Exception:
+            pass
+        self._activity.log(
+            self._user,
+            "start_session",
+            target_type="session",
+            target_id=int(sid) if sid else None,
+            detail=f"Bắt đầu phiên cho bàn #{table_id}",
+        )
         self._reload_sessions_board()
         self._reload_tables()
 
@@ -1972,6 +2540,11 @@ class MainWindow(QMainWindow):
     def _end_session_by_id(self, session_id: int) -> None:
         if QMessageBox.question(self, "Xác nhận", "Kết thúc phiên và tạo hoá đơn?") != QMessageBox.StandardButton.Yes:
             return
+        session_info = None
+        try:
+            session_info = self._sessions_repo.get_detail(int(session_id))
+        except Exception:
+            pass
         try:
             total = self._sessions_repo.end_session(int(session_id))
             try:
@@ -1981,6 +2554,25 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.critical(self, "Lỗi", str(e))
             return
+        # Log: power off + payment, đồng thời cộng total_spent cho thẻ thành viên (nếu có)
+        if session_info is not None:
+            try:
+                self._power_repo.log(int(session_info.get("table_id") or 0), "off", user_id=self._user.get("id"))
+            except Exception:
+                pass
+            try:
+                sm = self._members_repo.get_session_member(int(session_id))
+                if sm is not None:
+                    self._members_repo.add_spent(int(sm["member_id"]), float(total or 0))
+            except Exception:
+                pass
+        self._activity.log(
+            self._user,
+            "payment",
+            target_type="session",
+            target_id=int(session_id),
+            detail=f"Thanh toán phiên #{session_id}, tổng: {float(total or 0):,.0f}đ",
+        )
         self._reload_sessions_board()
         self._reload_invoices()
         self._reload_tables()
@@ -2144,7 +2736,35 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.critical(self, "Lỗi", str(e))
                 return
+            try:
+                self._inventory_consume_service(int(service_id), int(qty), int(session_id))
+            except Exception:
+                pass
+            self._activity.log(
+                self._user,
+                "add_service",
+                target_type="session",
+                target_id=int(session_id),
+                detail=f"Thêm {qty} x dịch vụ #{service_id} ({self._format_vnd(unit)}) vào phiên #{session_id}",
+            )
             self._reload_sessions_board()
+
+    def _inventory_consume_service(self, service_id: int, quantity: int, session_id: int) -> None:
+        """Trừ kho tự động nếu service được gắn với item kho."""
+        rows = self._db.fetch_all(
+            "SELECT id FROM inventory_items WHERE service_id=%s",
+            (int(service_id),),
+        )
+        for r in rows:
+            self._inventory_repo.add_movement(
+                item_id=int(r["id"]),
+                movement_type="out",
+                quantity=float(quantity),
+                ref_type="session_service",
+                ref_id=int(session_id),
+                note="Tự động xuất kho theo dịch vụ",
+                created_by=self._user.get("id"),
+            )
 
     # ---------- Invoices (export PDF) ----------
     def _init_invoices_page(self) -> None:

@@ -42,7 +42,7 @@
       </size>
      </property>
      <property name="styleSheet">
-      <string notr="true">QFrame#sidebar{background:#e8f2fc;border-right:1px solid #c8ddf0;color:#334e68;} QLabel#lblBrand{font-size:18px;font-weight:700;color:#1d6a9e;} QListWidget{border:none;background:transparent;} QListWidget::item{padding:10px 12px;border-radius:10px;margin:3px 10px;color:#334e68;} QListWidget::item:hover{background:#ddeaf9;} QListWidget::item:selected{background:#bdd8f2;color:#0f3558;} QPushButton#btnLogout{background:#ffffff;border:1px solid #8eb8e0;color:#1e4976;border-radius:10px;padding:10px 12px;} QPushButton#btnLogout:hover{background:#e8f4fc;border-color:#4293e6;}</string>
+      <string notr="true"/>
      </property>
      <layout class="QVBoxLayout" name="sidebarLayout">
       <property name="leftMargin">
@@ -63,10 +63,10 @@
       <item>
        <widget class="QLabel" name="lblBrand">
         <property name="text">
-         <string>🎱 Billiards</string>
+         <string>≡  Billiards</string>
         </property>
         <property name="alignment">
-         <set>Qt::AlignCenter</set>
+         <set>Qt::AlignLeft|Qt::AlignVCenter</set>
         </property>
        </widget>
       </item>
@@ -185,12 +185,7 @@
       </sizepolicy>
      </property>
      <property name="styleSheet">
-      <string notr="true">QFrame#content{background:#f6f8fc;}
-QLabel{color:#0f172a;}
-QFrame#topbar{background:#ffffff;border-bottom:1px solid #e5e7eb;}
-QStackedWidget{background:transparent;}
-QFrame.pageCard{background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;}
-QLabel.pageTitle{font-size:18px;font-weight:800;color:#0f172a;}</string>
+      <string notr="true"/>
      </property>
      <layout class="QVBoxLayout" name="contentLayout">
       <property name="leftMargin">

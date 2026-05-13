@@ -27,20 +27,21 @@ USER_ALLOWED_PAGE_NAMES = frozenset(
 )
 
 # Thứ tự trang trong QStackedWidget (main.ui) — phải khớp file UI
+# Mục đầu chuỗi label dùng làm icon (đứng trước 2 space) cho sidebar dark navy.
 _MENU_ORDER: list[tuple[str, str]] = [
-    ("pageDashboard", "Tổng quan"),
-    ("pageTables", "Quản lý bàn"),
-    ("pageTableTypes", "Loại bàn"),
-    ("pageServices", "Dịch vụ"),
-    ("pageServiceTypes", "Loại dịch vụ"),
-    ("pageSessions", "Phiên chơi"),
-    ("pageEmployees", "Nhân viên"),
-    ("pageRoles", "Chức vụ"),
-    ("pageShifts", "Ca làm"),
-    ("pageBookings", "Đặt lịch"),
-    ("pageInvoices", "Hoá đơn"),
-    ("pageStats", "Thống kê"),
-    ("pageUsers", "Tài khoản"),
+    ("pageSessions", "▦  Sơ đồ bàn"),
+    ("pageDashboard", "▤  Tổng quan"),
+    ("pageInvoices", "🧾  Thu ngân"),
+    ("pageBookings", "📅  Đặt lịch"),
+    ("pageServices", "🛎  Phiếu minibar/dịch vụ"),
+    ("pageServiceTypes", "🗂  Loại dịch vụ"),
+    ("pageShifts", "🔁  Giao ca"),
+    ("pageStats", "📈  Thống kê tổng hợp"),
+    ("pageEmployees", "👥  Nhân viên"),
+    ("pageRoles", "🏷  Chức vụ"),
+    ("pageTables", "🎱  Thiết đặt bàn"),
+    ("pageTableTypes", "💲  Cấu hình giá bàn"),
+    ("pageUsers", "🔐  Tài khoản"),
 ]
 
 
