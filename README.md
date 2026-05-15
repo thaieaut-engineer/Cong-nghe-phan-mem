@@ -2,6 +2,11 @@
 
 Ứng dụng quản lý quán bi-a: đăng nhập, quản lý bàn/loại bàn/dịch vụ/nhân viên, phiên chơi, đặt lịch, in hoá đơn PDF, thống kê.
 
+Thành viên:
+Q.Duy.Thái (Nhóm trưởng)
+T.Hoài.Sơn (Thành viên)
+T.Đình.Dũng (Thành viên)
+
 ### Yêu cầu
 
 - **Python**: 3.10+ (khuyến nghị 3.11)

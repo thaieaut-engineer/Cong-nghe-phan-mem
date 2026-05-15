@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFileDialog,
     QGridLayout,
+    QScrollArea,
     QHBoxLayout,
     QSizePolicy,
     QSpacerItem,
@@ -382,7 +383,9 @@ class MainWindow(QMainWindow):
             if w is not None:
                 w.deleteLater()
 
-        # Container scrollable nếu cần (page khá dài)
+        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setSpacing(0)
+
         outer = QVBoxLayout()
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(14)
@@ -516,7 +519,7 @@ class MainWindow(QMainWindow):
 
         chart_row.addWidget(chart_card, 2)
         chart_row.addWidget(activity_card, 1)
-        outer.addLayout(chart_row, 1)
+        outer.addLayout(chart_row)
 
         # ===== Bottom: Hoá đơn gần đây + Đặt lịch sắp tới =====
         tables_row = QHBoxLayout()
@@ -552,12 +555,17 @@ class MainWindow(QMainWindow):
 
         tables_row.addWidget(left_card, 1)
         tables_row.addWidget(right_card, 1)
-        outer.addLayout(tables_row, 1)
+        outer.addLayout(tables_row)
 
-        layout.addLayout(outer)
-        if layout.count() >= 1:
-            # Để section cuối giãn theo chiều cao
-            layout.setStretch(layout.count() - 1, 1)
+        scroll_host = QWidget()
+        scroll_host.setLayout(outer)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setWidget(scroll_host)
+        layout.addWidget(scroll, 1)
 
         self._reload_dashboard()
 
