@@ -6,49 +6,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app.core.config import get_db_config  # noqa: E402
-from app.core.security import hash_password  # noqa: E402
-
-import mysql.connector  # noqa: E402
+from app.core.db import Database  # noqa: E402
+from app.core.db_seed import ensure_default_seed  # noqa: E402
 
 
 def main() -> int:
-    cfg = get_db_config()
-    conn = mysql.connector.connect(
-        host=cfg.host,
-        port=cfg.port,
-        user=cfg.user,
-        password=cfg.password,
-        database=cfg.database,
-    )
-    cur = conn.cursor()
-
-    # roles: admin / user (mặc định đăng ký) / staff
-    cur.execute("INSERT IGNORE INTO roles(name) VALUES(%s)", ("admin",))
-    cur.execute("INSERT IGNORE INTO roles(name) VALUES(%s)", ("user",))
-    cur.execute("INSERT IGNORE INTO roles(name) VALUES(%s)", ("staff",))
-    conn.commit()
-
-    cur.execute("SELECT id FROM roles WHERE name=%s", ("admin",))
-    admin_role_id = int(cur.fetchone()[0])
-
-    # admin user
-    cur.execute("SELECT id FROM users WHERE username=%s", ("admin",))
-    if cur.fetchone() is None:
-        cur.execute(
-            "INSERT INTO users(username, password, role_id) VALUES(%s,%s,%s)",
-            ("admin", hash_password("admin123"), admin_role_id),
-        )
-        conn.commit()
+    db = Database()
+    before = db.fetch_one("SELECT id FROM users WHERE username=%s", ("admin",))
+    ensure_default_seed(db)
+    after = db.fetch_one("SELECT id FROM users WHERE username=%s", ("admin",))
+    if after and not before:
         print("Seeded admin user: admin/admin123")
-    else:
+    elif after:
         print("Admin user already exists.")
-
-    cur.close()
-    conn.close()
+    else:
+        print("Could not seed admin user (missing admin role).")
+        return 1
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

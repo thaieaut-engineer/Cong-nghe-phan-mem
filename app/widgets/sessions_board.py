@@ -19,6 +19,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.core.currency import format_vnd
+
 
 @dataclass(frozen=True)
 class TableState:
@@ -153,10 +155,7 @@ class _TableCard(QFrame):
 
         meta.addStretch(1)
 
-        # Hiển thị tạm tính dạng rút gọn (K)
-        amount_k = max(0.0, float(t.active_total or 0)) / 1000.0
-        amount_text = f"{amount_k:.0f}K" if amount_k >= 1 else "0K"
-        lbl_amount = QLabel(amount_text)
+        lbl_amount = QLabel(format_vnd(float(t.active_total or 0), compact=True))
         lbl_amount.setProperty("priceBig", True)
         meta.addWidget(lbl_amount)
 

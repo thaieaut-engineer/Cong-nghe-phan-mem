@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 from app.core.theme import apply_theme
 from app.core.db import Database
 from app.core.db_migrate import run_all_migrations
+from app.core.db_seed import ensure_default_seed
 from app.repositories.user_repository import UserRepository
 from app.services.auth_service import AuthService
 from app.services.register_service import RegisterService
@@ -23,6 +24,7 @@ def main() -> int:
     try:
         db = Database()
         run_all_migrations(db)
+        ensure_default_seed(db)
     except Exception as e:
         QMessageBox.critical(None, "Không kết nối được MySQL", str(e))
         return 1

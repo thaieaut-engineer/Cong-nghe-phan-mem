@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.core.currency import format_vnd
+
 
 @dataclass(frozen=True)
 class BillService:
@@ -53,13 +55,6 @@ ACTION_GROUP_PAY = "group_pay"
 ACTION_DETAIL = "detail"
 ACTION_POWER_HISTORY = "power_history"
 ACTION_USER_HISTORY = "user_history"
-
-
-def _fmt_vnd(v: float) -> str:
-    try:
-        return f"{int(round(v)):,}".replace(",", ",")
-    except Exception:
-        return "0"
 
 
 class TableFeaturesDialog(QDialog):
@@ -165,19 +160,19 @@ class TableFeaturesDialog(QDialog):
         v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(4)
 
-        v.addLayout(_bill_line("Tiền bàn", _fmt_vnd(bill.table_amount)))
+        v.addLayout(_bill_line("Tiền bàn", format_vnd(bill.table_amount)))
         if bill.discount_percent > 0:
             v.addLayout(
                 _bill_line(
                     f"Giảm giá ({int(bill.discount_percent)}%)",
-                    _fmt_vnd(bill.discount_amount),
+                    format_vnd(bill.discount_amount),
                 )
             )
         if bill.services:
-            v.addLayout(_bill_line("Dịch vụ sử dụng", _fmt_vnd(bill.services_total)))
+            v.addLayout(_bill_line("Dịch vụ sử dụng", format_vnd(bill.services_total)))
             for s in bill.services:
                 detail = QLabel(
-                    f"   {s.name}    {s.quantity} x {_fmt_vnd(s.unit_price)} = {_fmt_vnd(s.amount)}"
+                    f"   {s.name}    {s.quantity} x {format_vnd(s.unit_price)} = {format_vnd(s.amount)}"
                 )
                 detail.setProperty("billLine", True)
                 v.addWidget(detail)

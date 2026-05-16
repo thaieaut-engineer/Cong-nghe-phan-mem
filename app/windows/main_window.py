@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.core.currency import format_vnd
 from app.core.ui import get_child, load_ui
 from app.core.db import Database
 from app.core.image_store import resolve_image_path, store_image
@@ -76,7 +77,7 @@ from app.widgets.feature_dialogs import (
     HistoryDialog,
     MemberChooserDialog,
 )
-from app.widgets.revenue_chart import RevenueBarChart, RevenuePoint
+from app.widgets.revenue_chart import RevenueChartPanel, RevenuePoint
 from app.services.invoice_pdf_service import export_invoice_pdf
 from app.services.register_service import RegisterService
 
@@ -364,9 +365,7 @@ class MainWindow(QMainWindow):
         self._update_grid_cell_size(grid)
 
     def _format_vnd(self, amount: float) -> str:
-        n = int(round(float(amount or 0)))
-        s = f"{n:,}".replace(",", ".")
-        return f"{s} đ"
+        return format_vnd(amount)
 
     # ---------- Dashboard ----------
     def _init_dashboard_page(self) -> None:
@@ -494,12 +493,9 @@ class MainWindow(QMainWindow):
         chart_ly = QVBoxLayout(chart_card)
         chart_ly.setContentsMargins(14, 14, 14, 14)
         chart_ly.setSpacing(10)
-        chart_title = QLabel("Doanh thu 30 ngày gần nhất")
-        chart_title.setProperty("sectionTitle", True)
-        chart_ly.addWidget(chart_title)
-        self._dash_rev_chart = RevenueBarChart()
-        self._dash_rev_chart.setMinimumHeight(220)
-        chart_ly.addWidget(self._dash_rev_chart, 1)
+        self._dash_rev_panel = RevenueChartPanel()
+        self._dash_rev_panel.period_changed.connect(self._reload_dashboard_chart)
+        chart_ly.addWidget(self._dash_rev_panel, 1)
 
         activity_card = QFrame()
         activity_card.setProperty("card", True)
@@ -605,7 +601,6 @@ class MainWindow(QMainWindow):
             kpi = self._stats_repo.dashboard_kpis()
             invoices = self._stats_repo.recent_invoices(8)
             bookings = self._stats_repo.upcoming_bookings(8)
-            rev = self._stats_repo.revenue_by_day(30)
         except Exception as e:
             QMessageBox.critical(self, "Lỗi DB", str(e))
             return
@@ -713,12 +708,20 @@ class MainWindow(QMainWindow):
                         text += f"  —  {detail}"
                     self._dash_activity_list.addItem(QListWidgetItem(text))
 
-        # ----- Chart: oldest -> newest -----
-        pts: list[RevenuePoint] = []
-        for r in reversed(rev or []):
-            pts.append(RevenuePoint(day=str(r.get("day") or ""), revenue=float(r.get("revenue") or 0)))
-        if hasattr(self, "_dash_rev_chart") and self._dash_rev_chart is not None:
-            self._dash_rev_chart.set_points(pts)
+        self._reload_dashboard_chart()
+
+    def _reload_dashboard_chart(self) -> None:
+        if not hasattr(self, "_dash_rev_panel"):
+            return
+        start, end = self._dash_rev_panel.selected_range()
+        try:
+            rev = self._stats_repo.revenue_by_date_range(start, end)
+        except Exception as e:
+            QMessageBox.critical(self, "Lỗi biểu đồ", str(e))
+            return
+        pts = [RevenuePoint(day=str(r.get("day") or ""), revenue=float(r.get("revenue") or 0)) for r in rev]
+        self._dash_rev_panel.chart().set_points(pts, start=start, end=end)
+        self._dash_rev_panel.refresh_title()
 
     def _table_status_label(self, status: str) -> str:
         status_map = {"empty": "Trống", "playing": "Đang chơi", "maintenance": "Bảo trì"}
@@ -823,6 +826,8 @@ class MainWindow(QMainWindow):
             return f"{name}\n{self._format_vnd(price)}/giờ"
 
         self._set_grid_items(self._tt_grid, items, build_text)
+        if hasattr(self, "_sessions_board"):
+            self._reload_sessions_board()
 
     def _add_table_type(self) -> None:
         dlg = load_ui("dialog_table_type.ui", self)
@@ -952,6 +957,8 @@ class MainWindow(QMainWindow):
             return f"{name}\n{type_name} • {st}"
 
         self._set_grid_items(self._tb_grid, items, build_text)
+        if hasattr(self, "_sessions_board"):
+            self._reload_sessions_board()
 
     def _open_table_dialog(self, current: dict | None = None) -> tuple[str, int | None, str] | None:
         dlg = load_ui("dialog_table.ui", self)
@@ -965,7 +972,7 @@ class MainWindow(QMainWindow):
         combo_type.clear()
         combo_type.addItem("-- Chọn loại bàn --", None)
         for t in self._table_types_repo.list_all():
-            combo_type.addItem(f"{t['name']} ({t['price_per_hour']}/h)", int(t["id"]))
+            combo_type.addItem(f"{t['name']} ({format_vnd(float(t['price_per_hour'] or 0))}/giờ)", int(t["id"]))
 
         statuses = [("empty", "Trống"), ("playing", "Đang chơi"), ("maintenance", "Bảo trì")]
         combo_status.clear()
@@ -2320,7 +2327,7 @@ class MainWindow(QMainWindow):
             "group_payment",
             target_type="payment_group",
             target_id=int(group_id),
-            detail=f"Thanh toán nhóm “{name}” gồm {len(session_ids)} phiên, tổng: {grand_total:,.0f}đ",
+            detail=f"Thanh toán nhóm “{name}” gồm {len(session_ids)} phiên, tổng: {format_vnd(grand_total)}",
         )
         QMessageBox.information(
             self,
@@ -2579,7 +2586,7 @@ class MainWindow(QMainWindow):
             "payment",
             target_type="session",
             target_id=int(session_id),
-            detail=f"Thanh toán phiên #{session_id}, tổng: {float(total or 0):,.0f}đ",
+            detail=f"Thanh toán phiên #{session_id}, tổng: {format_vnd(float(total or 0))}",
         )
         self._reload_sessions_board()
         self._reload_invoices()
@@ -2779,12 +2786,11 @@ class MainWindow(QMainWindow):
         self._crud_invoices = self._replace_page_with_crud("pageInvoices", "Hoá đơn")
         self._iv_search = get_child(self._crud_invoices, QLineEdit, "lineSearch")
         self._iv_refresh = get_child(self._crud_invoices, QPushButton, "btnRefresh")
-        self._iv_add = get_child(self._crud_invoices, QPushButton, "btnAdd")
+        get_child(self._crud_invoices, QPushButton, "btnAdd").hide()
         self._iv_export = get_child(self._crud_invoices, QPushButton, "btnEdit")
         self._iv_delete = get_child(self._crud_invoices, QPushButton, "btnDelete")
         self._iv_table = get_child(self._crud_invoices, QTableView, "tableView")
 
-        self._iv_add.setEnabled(False)
         self._iv_delete.setEnabled(False)
         self._iv_export.setText("Xuất PDF")
         self._iv_export.setEnabled(False)

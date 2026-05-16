@@ -21,6 +21,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.core.currency import format_vnd
+
 
 # =====================================================================
 # Member chooser
@@ -220,7 +222,7 @@ class GroupPaymentDialog(QDialog):
                 total = float(compute_total_fn(int(s["id"])) or 0)
             except Exception:
                 total = float(s.get("total") or 0)
-            cell = QTableWidgetItem(f"{int(round(total)):,}".replace(",", ".") + " đ")
+            cell = QTableWidgetItem(format_vnd(total))
             cell.setData(Qt.ItemDataRole.UserRole, float(total))
             self._table.setItem(i, 3, cell)
 
@@ -228,7 +230,7 @@ class GroupPaymentDialog(QDialog):
         v.addWidget(self._table, 1)
 
         # Summary
-        self._lbl_summary = QLabel("Đã chọn 0 phiên — Tổng: 0 đ")
+        self._lbl_summary = QLabel(f"Đã chọn 0 phiên — Tổng: {format_vnd(0)}")
         self._lbl_summary.setStyleSheet("font-weight:700;")
         v.addWidget(self._lbl_summary)
 
@@ -257,8 +259,7 @@ class GroupPaymentDialog(QDialog):
 
     def _update_summary(self, *_) -> None:
         ids, total = self._selected_ids_and_total()
-        amount_text = f"{int(round(total)):,}".replace(",", ".") + " đ"
-        self._lbl_summary.setText(f"Đã chọn {len(ids)} phiên — Tổng: {amount_text}")
+        self._lbl_summary.setText(f"Đã chọn {len(ids)} phiên — Tổng: {format_vnd(total)}")
 
     def _on_ok(self) -> None:
         ids, _ = self._selected_ids_and_total()

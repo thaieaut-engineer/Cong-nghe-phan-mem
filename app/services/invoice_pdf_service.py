@@ -7,6 +7,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen.canvas import Canvas
 
+from app.core.currency import format_vnd
+
 
 def export_invoice_pdf(
     *,
@@ -60,8 +62,8 @@ def export_invoice_pdf(
         unit = float(it.get("unit_price") or 0)
         amount = qty * unit
         total_items += amount
-        c.drawString(x, y, f"{name} x{qty} @ {unit:,.0f}")
-        c.drawRightString(w - x, y, f"{amount:,.0f}")
+        c.drawString(x, y, f"{name} x{qty} @ {format_vnd(unit)}")
+        c.drawRightString(w - x, y, format_vnd(amount))
         y -= 6 * mm
         if y < 30 * mm:
             c.showPage()
@@ -71,7 +73,7 @@ def export_invoice_pdf(
     y -= 3 * mm
     c.setFont("Helvetica-Bold", 12)
     total = float(invoice.get("total") or total_items or 0)
-    c.drawRightString(w - x, y, f"Tổng: {total:,.0f} đ")
+    c.drawRightString(w - x, y, f"Tổng: {format_vnd(total)}")
 
     c.showPage()
     c.save()

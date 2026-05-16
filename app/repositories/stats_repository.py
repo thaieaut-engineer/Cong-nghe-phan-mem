@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from app.core.db import Database
 
 
@@ -50,15 +52,22 @@ class StatsRepository:
         )
 
     def revenue_by_day(self, days: int = 14) -> list[dict]:
+        end = date.today()
+        start = end.fromordinal(end.toordinal() - max(0, int(days) - 1))
+        return self.revenue_by_date_range(start, end)
+
+    def revenue_by_date_range(self, start: date, end: date) -> list[dict]:
+        if start > end:
+            start, end = end, start
         return self._db.fetch_all(
             """
             SELECT DATE(created_at) AS day, SUM(total) AS revenue, COUNT(*) AS invoices
             FROM invoices
-            WHERE created_at >= (NOW() - INTERVAL %s DAY)
+            WHERE DATE(created_at) BETWEEN %s AND %s
             GROUP BY DATE(created_at)
-            ORDER BY day DESC
+            ORDER BY day ASC
             """.strip(),
-            (days,),
+            (start.isoformat(), end.isoformat()),
         )
 
     def top_services(self, limit: int = 10) -> list[dict]:
@@ -73,4 +82,3 @@ class StatsRepository:
             """.strip(),
             (limit,),
         )
-
