@@ -114,6 +114,27 @@ class _TableCard(QFrame):
             "empty": "Bàn trống",
         }.get(visual, "Bàn trống")
 
+    def _parse_start(self) -> datetime | None:
+        t = self._t
+        if not t.active_start_time:
+            return None
+        try:
+            return datetime.strptime(t.active_start_time, "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            try:
+                return datetime.fromisoformat(t.active_start_time)
+            except Exception:
+                return None
+
+    def _table_amount_for_seconds(self, total_sec: int) -> float:
+        t = self._t
+        hours = max(0, int(total_sec)) / 3600.0
+        amt = hours * float(t.price_per_hour or 0)
+        d = float(t.discount_percent or 0)
+        if d > 0:
+            amt *= 1.0 - d / 100.0
+        return amt
+
     def _build_playing_body(self, root: QVBoxLayout) -> None:
         t = self._t
         # Đồng hồ phút/giây + thời điểm bắt đầu
@@ -155,11 +176,18 @@ class _TableCard(QFrame):
 
         meta.addStretch(1)
 
-        lbl_amount = QLabel(format_vnd(float(t.active_total or 0), compact=True))
-        lbl_amount.setProperty("priceBig", True)
-        meta.addWidget(lbl_amount)
+        self._lbl_amount = QLabel(format_vnd(float(t.active_total or 0), compact=True))
+        self._lbl_amount.setProperty("priceBig", True)
+        meta.addWidget(self._lbl_amount)
 
         root.addLayout(meta)
+
+        start = self._parse_start()
+        init_sec = int(max(0, (datetime.now() - start).total_seconds())) if start else 0
+        # Phần không phụ thuộc thời gian chơi (dịch vụ, v.v.) để cộng vào tạm tính realtime.
+        self._service_extra = max(
+            0.0, float(t.active_total or 0) - self._table_amount_for_seconds(init_sec)
+        )
 
         self._tick_now()
 
@@ -187,23 +215,22 @@ class _TableCard(QFrame):
         self._tick_now()
 
     def _tick_now(self) -> None:
-        t = self._t
-        if not t.active_start_time:
+        if self._visual != "playing":
             return
-        try:
-            start = datetime.strptime(t.active_start_time, "%Y-%m-%d %H:%M:%S")
-        except Exception:
-            try:
-                start = datetime.fromisoformat(t.active_start_time)
-            except Exception:
-                return
-        delta = datetime.now() - start
-        total_sec = int(max(0, delta.total_seconds()))
+        start = self._parse_start()
+        if not start:
+            return
+        total_sec = int(max(0, (datetime.now() - start).total_seconds()))
         mins, secs = divmod(total_sec, 60)
         if hasattr(self, "_lbl_min"):
             self._lbl_min.setText(str(mins))
         if hasattr(self, "_lbl_sec"):
             self._lbl_sec.setText(str(secs))
+        if hasattr(self, "_lbl_amount"):
+            amt = self._table_amount_for_seconds(total_sec) + getattr(
+                self, "_service_extra", 0.0
+            )
+            self._lbl_amount.setText(format_vnd(amt, compact=True))
 
     def mousePressEvent(self, event) -> None:  # noqa: N802 (Qt API)
         if event.button() == Qt.MouseButton.LeftButton:
